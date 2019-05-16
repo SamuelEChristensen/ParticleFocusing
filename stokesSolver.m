@@ -55,10 +55,10 @@ for i=1:maxWaveNum
 end
 
 % Initialisation of K, F
-K = zeros(numberOfNodes.new);
-M = zeros(numberOfNodes.new);
-B = zeros(2*numberOfNodes.new,numberOfNodes.old);
-B3 = zeros(numberOfNodes.new,numberOfNodes.old);
+K = sparse(numberOfNodes.new,numberOfNodes.new);
+M = sparse(numberOfNodes.new,numberOfNodes.new);
+B = sparse(2*numberOfNodes.new,numberOfNodes.old);
+B3 = sparse(numberOfNodes.new,numberOfNodes.old);
 F = zeros(wnl*maxWaveNum,1);
  
 % Gaussian quadrature points & weights
@@ -155,37 +155,48 @@ momentumEQNs =@(waveNum) blkdiag(K-2*pi*waveNum.^2*M,K-2*pi*waveNum^2*M,K-2*pi*w
 Awn = @(waveNum) [-momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 
 Awns=cell(1,length(waveNumbers));
+PCG = cell(1,length(waveNumbers));
 for i=1:length(waveNumbers)
-    Awns(i)={Awn(waveNumbers(i))};
+    Awns(i) = {Awn(waveNumbers(i))};
 end
 %rank one update to increase rank
 u=[zeros(3*numberOfNodes.new,1);ones(numberOfNodes.old,1)];
-Awns{maxWaveNum/2} = Awns{maxWaveNum/2}+mean(mean(abs(Bs)))*(u*u');
-
-
+u = sparse(u);
+Awns{maxWaveNum/2} = Awns{maxWaveNum/2}+1*mean(mean(abs(Bs)))*(u*u');
 
 
 % Dirichlet boundary
 Dirichlet123 = [Dirichlet;Dirichlet+numberOfNodes.new;Dirichlet+2*numberOfNodes.new];
-boundDiv = cell(maxWaveNum);
 for i=1:maxWaveNum
     Awns{i}(Dirichlet123, :) = 0;
     Awns{i}(Dirichlet123, Dirichlet123) = eye(numel(Dirichlet123));
+    
     F(Dirichlet123+(i-1)*wnl) = Fb((1:numel(Dirichlet123))+(i-1)*numel(Dirichlet123));
-    currentMat = Btot(waveNumbers(i))';
-    boundDiv{i} = currentMat(:,Dirichlet123)*Fb((1:numel(Dirichlet123))+(i-1)*numel(Dirichlet123));
 end
 
-A = blkdiag(Awns{:});
+%A = blkdiag(A{:});
+clear K M Bs B3s
+U=cell(maxWaveNum);
+for i=1:maxWaveNum
+    U{i} = Awns{i}\F((1:wnl)+(i-1)*wnl);
+end
+    
+    
 
 
-
-U=A\F;
-
+tol=10^(-10);
+maxit=100;
+%U=gmres(A,F,30,tol,maxit, PCG);
 Uwn=cell(maxWaveNum, 4); % (waveNumbers, u1 u2 u3  p) 
 for i=1:maxWaveNum
-   Uwn{i,1} = U((1:numberOfNodes.old)+(i-1)*wnl); 
-   Uwn{i,2} = U((1:numberOfNodes.old)+(i-1)*wnl+numberOfNodes.new);
-   Uwn{i,3} = U((1:numberOfNodes.old)+(i-1)*wnl+2*numberOfNodes.new);
-   Uwn{i,4} = U((1:numberOfNodes.old)+(i-1)*wnl+3*numberOfNodes.new);
+   Uwn{i,1} = U{i}((1:numberOfNodes.old)); 
+   Uwn{i,2} = U{i}((1:numberOfNodes.old)+numberOfNodes.new);
+   Uwn{i,3} = U{i}((1:numberOfNodes.old)+2*numberOfNodes.new);
+   Uwn{i,4} = U{i}((1:numberOfNodes.old)+3*numberOfNodes.new);
 end
+%for i=1:maxWaveNum
+%   Uwn{i,1} = U((1:numberOfNodes.old)+(i-1)*wnl); 
+%   Uwn{i,2} = U((1:numberOfNodes.old)+(i-1)*wnl+numberOfNodes.new);
+%   Uwn{i,3} = U((1:numberOfNodes.old)+(i-1)*wnl+2*numberOfNodes.new);
+%   Uwn{i,4} = U((1:numberOfNodes.old)+(i-1)*wnl+3*numberOfNodes.new);
+%end

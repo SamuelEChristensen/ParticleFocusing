@@ -7,6 +7,7 @@ function plotStokesSol(p,t,Uwn)
 % end
 titles={'U1','U2','U3','P'};
 figure
+zwn=length(Uwn)/2;
 for i=1:4
 subplot(2,2,i)
 set(gca, 'Projection', 'perspective')
@@ -16,7 +17,7 @@ view(70, 20)
 axis vis3d
 axis([-1 1 -1 1 -1 1])
 cla
-trisurf(t, p(:,1), p(:,2), real(Uwn{2,i}), 'EdgeColor', 'none', 'FaceColor', 'interp');
+trisurf(t, p(:,1), p(:,2), real(Uwn{zwn,i}), 'EdgeColor', 'none', 'FaceColor', 'interp');
 colorbar
 title(titles{i})
 drawnow

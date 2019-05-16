@@ -22,7 +22,7 @@ fb=@(x,k) sol(x,k);
 
 for i=1:length(initialLengths)
 %fh=@(p) min(0.05+0.21*abs(dcircle(p,xp(1),xp(2),0)),0.1);
-[p,t]=distmesh2d(fd,@huniform,0.05,[-1,-1;1,1],[0,0]);
+[p,t]=distmesh2d(fd,@huniform,0.02,[-1,-1;1,1],[0,0]);
 %fullsol=sol(p,0);
     profile on
     [Uwn,pold,told]=stokesSolver(p,t,f,fb);
