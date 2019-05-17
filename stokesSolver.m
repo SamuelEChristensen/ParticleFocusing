@@ -92,7 +92,7 @@ for e = 1:numberOfElements
     % Concatenate
     IPSPrime =  [IPSPrimeX(:, 1) ISPPrimeY(:, 1) IPSPrimeX(:, 2) ISPPrimeY(:, 2) IPSPrimeX(:, 3) ISPPrimeY(:, 3)];    
     
-    % Solve for Phi and PhiPrime in integration points
+    % Viscous terms
     PhiIPS = P \ IPS; 
     PhiIpsPrime = P \ IPSPrime;
     
@@ -102,10 +102,15 @@ for e = 1:numberOfElements
      
     Me = wOmega(1) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
          wOmega(2) * PhiIPS(:, 2) * PhiIPS(:, 2)' * areaOfElement + ...
-         wOmega(3) * PhiIPS(:, 3) * PhiIPS(:, 3)' * areaOfElement;     
+         wOmega(3) * PhiIPS(:, 3) * PhiIPS(:, 3)' * areaOfElement;   
+     
     
-     %Pressure component
-     %phis are quadratic, psis are linear
+     
+     
+     
+    
+    %Pressure component
+    %phis are quadratic, psis are linear
     psiPres= P(1:3,1:3)\IPS(1:3,1:3);
     PhiDxIPS = P \ IPSPrimeX;
     PhiDyIPS = P \ ISPPrimeY;
