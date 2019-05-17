@@ -1,4 +1,4 @@
-function [Uwn,pOld,tOld] = OseenSolver(p,t,f,fb)
+function [Uwn,pOld,tOld] = oseenSolver(p,t,f,fb)
 
 
 waveNumbers=-1:2;
@@ -7,7 +7,9 @@ b=boundedges(p,t);
 Dirichlet_e=b;
 p=p';
 
-ubar =@(x) 1+0*norm(x)^2;
+ubar =@(x) (1+x(:,1)+x(:,2));
+ubarx =@(x) 1;
+ubary =@(x) 1;
 pOld = p;
 tOld = t;
 
@@ -113,13 +115,21 @@ for e = 1:numberOfElements
     PhiDyIPS = P \ ISPPrimeY;
     PhiDzIPS = P \ IPS; %no derivative because of the fourier transform
     
-    Se1 = wOmega(1) * ubar(ip(1,:)) * PhiDxIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
-         wOmega(2) * ubar(ip(2,:)) * PhiDxIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
-         wOmega(3) * ubar(ip(3,:)) * PhiDxIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
+%     Se1 = wOmega(1) * ubar(ip(1,:)) * PhiDxIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
+%          wOmega(2) * ubar(ip(2,:)) * PhiDxIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
+%          wOmega(3) * ubar(ip(3,:)) * PhiDxIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
+% 
+%     Se2 = wOmega(1) * ubar(ip(1,:)) * PhiDyIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
+%          wOmega(2) * ubar(ip(2,:)) * PhiDyIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
+%          wOmega(3) * ubar(ip(3,:)) * PhiDyIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
 
-    Se2 = wOmega(1) * ubar(ip(1,:)) * PhiDyIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
-         wOmega(2) * ubar(ip(2,:)) * PhiDyIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
-         wOmega(3) * ubar(ip(3,:)) * PhiDyIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
+ Se1 = wOmega(1) * ubarx(ip(1,:)) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
+         wOmega(2) * ubarx(ip(2,:)) * PhiIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
+         wOmega(3) * ubarx(ip(3,:)) * PhiIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
+
+    Se2 = wOmega(1) * ubary(ip(1,:)) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
+         wOmega(2) * ubary(ip(2,:)) * PhiIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
+         wOmega(3) * ubary(ip(3,:)) * PhiIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
      
     Te = wOmega(1) * ubar(ip(1,:)) * PhiDzIPS(:, 1) *  PhiIPS(:, 1)' * areaOfElement + ...
          wOmega(2) * ubar(ip(2,:)) * PhiDzIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
@@ -185,18 +195,17 @@ momentumEQNs = @(waveNum) [Visc(waveNum), sparse(numberOfNodes.new,numberOfNodes
 Awn = @(waveNum) [momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 
 Awns=cell(1,length(waveNumbers));
-PCG = cell(1,length(waveNumbers));
 for i=1:length(waveNumbers)
     Awns(i) = {Awn(waveNumbers(i))};
 end
 %rank one update to increase rank
-u = [zeros(3*numberOfNodes.new,1);ones(numberOfNodes.old,1)];
+u = [zeros(3*numberOfNodes.new,1); ones(numberOfNodes.old,1)];
 u = sparse(u);
 Awns{maxWaveNum/2} = Awns{maxWaveNum/2}+1*mean(mean(abs(Bs)))*(u*u');
 
 
 % Dirichlet boundary
-Dirichlet123 = [Dirichlet;Dirichlet+numberOfNodes.new;Dirichlet+2*numberOfNodes.new];
+Dirichlet123 = [Dirichlet; Dirichlet+numberOfNodes.new;Dirichlet+2*numberOfNodes.new];
 for i=1:maxWaveNum
     Awns{i}(Dirichlet123, :) = 0;
     Awns{i}(Dirichlet123, Dirichlet123) = eye(numel(Dirichlet123));
