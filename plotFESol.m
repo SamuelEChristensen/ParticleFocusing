@@ -13,7 +13,7 @@ view(70, 20)
 axis vis3d
 axis([-1 1 -1 1 -1 1])
 cla
-trisurf(t, p(:,1), p(:,2), U, 'EdgeColor', [0.5 0.5 0.5], 'FaceColor', 'interp');
+trisurf(t, p(:,1), p(:,2), imag(U), 'EdgeColor', [0.5 0.5 0.5], 'FaceColor', 'interp');
 colorbar
 drawnow
 

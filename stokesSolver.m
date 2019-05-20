@@ -1,7 +1,7 @@
 function [Uwn,pOld,tOld]=stokesSolver(p,t,f,fb)
 
 
-waveNumbers=-1:2;
+waveNumbers=-7:8;
 maxWaveNum=length(waveNumbers);
 b=boundedges(p,t);
 Dirichlet_e=b;
@@ -155,8 +155,8 @@ Bs=[sparse(B);sparse(numberOfNodes.new, numberOfNodes.old)];
 B3s=[sparse(2*numberOfNodes.new, numberOfNodes.old); sparse(B3)];
 M=sparse(M);
 K=sparse(K);
-Btot = @(waveNum) Bs + 1i*(2*pi)^0.5*waveNum*B3s;
-momentumEQNs =@(waveNum) blkdiag(K-2*pi*waveNum.^2*M,K-2*pi*waveNum^2*M,K-2*pi*waveNum^2*M);
+Btot = @(waveNum) Bs + 1i*waveNum*B3s;
+momentumEQNs =@(waveNum) blkdiag(K+waveNum.^2*M,K+waveNum^2*M,K+waveNum^2*M);
 Awn = @(waveNum) [-momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 
 Awns=cell(1,length(waveNumbers));
@@ -167,7 +167,7 @@ end
 %rank one update to increase rank
 u=[zeros(3*numberOfNodes.new,1);ones(numberOfNodes.old,1)];
 u = sparse(u);
-Awns{maxWaveNum/2} = Awns{maxWaveNum/2}+1*mean(mean(abs(Bs)))*(u*u');
+Awns{maxWaveNum/2} = Awns{maxWaveNum/2}+100*mean(mean(abs(Bs)))*(u*u');
 
 
 % Dirichlet boundary
