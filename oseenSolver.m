@@ -186,11 +186,11 @@ Bs=[sparse(B);sparse(numberOfNodes.new, numberOfNodes.old)];
 B3s=[sparse(2*numberOfNodes.new, numberOfNodes.old); sparse(B3)];
 M=sparse(M);
 K=sparse(K);
-Btot = @(waveNum) Bs + 1i*(2*pi)^0.5*waveNum*B3s;
-Visc =@(waveNum) -K+2*pi*waveNum.^2*M;
-momentumEQNs = @(waveNum) [Visc(waveNum), sparse(numberOfNodes.new,numberOfNodes.new), 1i*(2*pi)^0.5*waveNum*T;
-                           sparse(numberOfNodes.new,numberOfNodes.new), Visc(waveNum), 1i*(2*pi)^0.5*waveNum*T;
-                           S1, S2, Visc(waveNum)+ 1i*(2*pi)^0.5*waveNum*T];
+Btot = @(waveNum) Bs + 1i*waveNum*B3s;
+Visc =@(waveNum) K+waveNum.^2*M;
+momentumEQNs = @(waveNum) [Visc(waveNum), sparse(numberOfNodes.new,numberOfNodes.new), 1i*waveNum*T;
+                           sparse(numberOfNodes.new,numberOfNodes.new), Visc(waveNum), 1i*waveNum*T;
+                           S1, S2, Visc(waveNum)+ 1i*waveNum*T];
     
 Awn = @(waveNum) [momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 

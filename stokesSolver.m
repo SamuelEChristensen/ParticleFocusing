@@ -1,7 +1,7 @@
 function [Uwn,pOld,tOld]=stokesSolver(p,t,f,fb)
 
 
-waveNumbers=-7:8;
+waveNumbers=-15:16;
 maxWaveNum=length(waveNumbers);
 b=boundedges(p,t);
 Dirichlet_e=b;

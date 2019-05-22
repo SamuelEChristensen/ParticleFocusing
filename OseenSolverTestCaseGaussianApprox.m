@@ -5,7 +5,7 @@ xp = [0.2, 0.2];
 sig = 0.1;
 N = @(x,k) -1/(sig^2*(sig*pi*2)^0.5)*exp(-1/2*(((x(:,1)-xp(1)).^2+(x(:,2)-xp(2)).^2)/sig^2+sig^2*k^2));
 %initialLengths=[0.2,0.15,0.1,0.075,0.05];
-initialLengths=[0.05];
+initialLengths=[0.04];
 error=zeros(length(initialLengths),2);
 
 sol=@(x,k) [0*x(:,2), 0*x(:,1), 0*x(:,1)+0*k];
