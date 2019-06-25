@@ -1,7 +1,6 @@
-function [Uwn,pOld,tOld]=stokesSolver(p,t,f,fb)
+function [Uwn,pOld,tOld]=stokesSolver(p,t,f,fb, waveNumbers)
 
 
-waveNumbers=-15:16;
 maxWaveNum=length(waveNumbers);
 b=boundedges(p,t);
 Dirichlet_e=b;
@@ -167,7 +166,7 @@ end
 %rank one update to increase rank
 u=[zeros(3*numberOfNodes.new,1);ones(numberOfNodes.old,1)];
 u = sparse(u);
-Awns{maxWaveNum/2} = Awns{maxWaveNum/2}+100*mean(mean(abs(Bs)))*(u*u');
+Awns{1} = Awns{1}+100*mean(mean(abs(Bs)))*(u*u');
 
 
 % Dirichlet boundary

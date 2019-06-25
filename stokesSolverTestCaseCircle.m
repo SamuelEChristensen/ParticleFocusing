@@ -3,7 +3,7 @@
   xp=[0.1, 0.1];  
   N=@(x,k) exp(-1/2*(x(:,1).^2+x(:,2).^2+k^2));
 
-initialLengths=[0.1];
+initialLengths=[0.03];
 
 error=zeros(length(initialLengths),2);
 count=1;
@@ -16,7 +16,7 @@ fb=@(x,k) sol(x,k);
 
 for i=1:length(initialLengths)
 %fh=@(p) min(0.05+0.21*abs(dcircle(p,xp(1),xp(2),0)),0.1);
-[p,t]=distmesh2d(fd,@huniform,0.1,[-1,-1;1,1],[0,0]);
+[p,t]=distmesh2d(fd,@huniform,initialLengths(i),[-1,-1;1,1],[0,0]);
 %fullsol=sol(p,0);
     profile on
     [Uwn,pold,told]=stokesSolver(p,t,f,fb);
