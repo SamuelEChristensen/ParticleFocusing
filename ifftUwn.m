@@ -12,10 +12,10 @@ for i = 1:maxWaveNum
     U3(:,i) = Uwn{i,3};
     P(:,i) = Uwn{i,4};
 end
-U1 = circshift(U1, -maxWaveNum/2+1,2);
-U2 = circshift(U2, -maxWaveNum/2+1,2);
-U3 = circshift(U3, -maxWaveNum/2+1,2);
-P = circshift(P, -maxWaveNum/2+1,2);
+%U1 = circshift(U1, -maxWaveNum/2+1,2);
+%U2 = circshift(U2, -maxWaveNum/2+1,2);
+%U3 = circshift(U3, -maxWaveNum/2+1,2);
+%P = circshift(P, -maxWaveNum/2+1,2);
 U1 = ifft(U1,maxWaveNum,2);
 U2 = ifft(U2,maxWaveNum,2);
 U3 = ifft(U3,maxWaveNum,2);
