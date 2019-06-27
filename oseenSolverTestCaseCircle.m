@@ -4,41 +4,56 @@
 %fd=@(p) drectangle(p,0,1,0,1);
  N=@(x,k) exp(-1/2*(x(:,1).^2+x(:,2).^2+k^2));
 
-initialLengths=[0.2,0.15,0.1,0.075,0.05];
-%initialLengths=[0.03];
+initialLengths=[0.2, 0.15, 0.1, 0.075, 0.05];
+%initialLengths=[0.09];
 error=zeros(length(initialLengths),2);
 
 
-%sol=@(x,k) [1*(1-exp(3*x(:,2).^2+2*x(:,1).^2)), ...
-%    (x(:,1).^2-1).*N(x,k), ...
-%    3*sin(x(:,1)-xp(1))+3*cos(x(:,2)-xp(2))];
-% f=@(x,k) [x(:,1).*x(:,2).*(x(:,1).^2+x(:,1).^2-6).*N(x,k)-x(:,1).*N(x,k), ...
-%    N(x,k).*(x(:,1).^4+x(:,1).^2.*(x(:,2)-7)-x(:,2).^2+4)-x(:,2).*N(x,k), ...
-% +1i*(2*pi)^0.5*k*N(x,k)];
-sig = 1;
-sol=@(x,k) [x(:,2), x(:,1), 0*x(:,1)+0*k];
-f=@(x,k) [2*x(:,2)+x(:,1), ...
-    -2*x(:,1)-x(:,1).^3, x(:,1)];
+realSol=@(x,z) [0*N(x,z), ...
+   -z*N(x,z), ...
+  x(:,2).*N(x,z)];
+sol =@(x,k) [zeros(size(x,1),1), ...
+    -1i*k*N(x,k), ...
+    x(:,2).*N(x,k)];
+% f = @(x,k) [zeros(size(x,1),1)...
+%             + (1 + x(:, 1) + x(:, 2)) .* (1i * x(:, 2) .* -x(:,1) .* N(x,k)), ...
+%             -1i*k*N(x,k).*(x(:,1).^2 + x(:,2).^2 - 2) + k^2*1i*k*N(x,k)...
+%              + (1 + x(:, 1) + x(:, 2)) .* ( -x(:,2).^2 .* N(x,k)), ...
+%             (x(:,2).^2+x(:,1).^2-4).*x(:,2).*N(x,k) - k^2*x(:,2).*N(x,k)...
+%             - 1i*k*N(x,k) + (1 + x(:, 1) + x(:, 2)) .* (1i*k * x(:,2) .* N(x,k))];
 
-%sol=@(x,k) [zeros(size(x,1),1), ones(size(x,1),1),ones(size(x,1),1)];
-%f=@(x,k) [x(:,1),-x(:,2).^2.*x(:,1),3*ones(size(x,1),1)];
-
+f = @(x,k) [zeros(size(x,1),1)...
+             + zeros(size(x,1),1), ...
+            -1i*k*N(x,k).*(x(:,1).^2 + x(:,2).^2 - 2) + k^2*1i*k*N(x,k)...
+              + (1 + x(:, 1) + x(:, 2)) .* (k^2*N(x,k)) , ...
+            (x(:,2).^2+x(:,1).^2-4).*x(:,2).*N(x,k) - k^2*x(:,2).*N(x,k)...
+            - 1i*k*N(x,k) + (1 + x(:, 1) + x(:, 2)) .* (1i*k * x(:,2) .* N(x,k))];
 
 fb=@(x,k) sol(x,k);
+
+
+maxWaveNum = 128;
+L = 10; 
+z = linspace(-L/2 + L/maxWaveNum, L/2, maxWaveNum);
+z = circshift(z, -maxWaveNum/2+1);
+waveNumbers = -2*pi*[0:maxWaveNum/2, -(maxWaveNum/2-1):-1]/L;
 
 for i=1:length(initialLengths)
 %fh=@(p) min(0.05+0.21*abs(dcircle(p,xp(1),xp(2),0)),0.1);
 %[p,t]=distmesh2d(fd,@huniform,initialLengths(i),[-1,-1;1,1],[0,0]);
-[p,t]=distmesh2d(fd,@huniform,initialLengths(i),[0,0;1,1],[0,0;1,0;1,1;0,1]);
-fullsol=sol(p,0);
+[p,t]=distmesh2d(fd,@huniform,initialLengths(i),[-1,-1;1,1],[0,0]);
     %profile on
-    [Uwn,pold,told]=oseenSolver(p,t,f,fb);
+    [Uwn,pold,told]=oseenSolver(p,t,f,fb, waveNumbers);
     %profile viewer
-    error(i,1)=norm([Uwn{2,1}, Uwn{2,2}, Uwn{2,3}]-fullsol)/length(p);
+    U = ifftUwn(Uwn);
+    zwn = length(Uwn)/2;
+    %for j = 1:length(Uwn)
+    %    error(i,1)=error(i,1)+norm([Uwn{j,1}, Uwn{j,2}, Uwn{j,3}]-sol(p,waveNumbers(j)))/length(p);
+    %end
+    for j = 1:length(Uwn)
+        error(i,1)=error(i,1)+norm( (2*pi)^0.5*maxWaveNum/L*[U{j,1}, U{j,2}, U{j,3}]-realSol(p,z(j)))/length(p);
+    end
     error(i,2)=length(p);
-    %plotFESol(p,t,Uwn{2,1}-fullsol(:,1))
-    %plotFESol(p,t,abs(Uwn{2,2}-fullsol(:,2)))
-    plotStokesSol(p,t,Uwn);
     
 end
 figure

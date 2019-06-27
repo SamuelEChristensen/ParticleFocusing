@@ -1,15 +1,19 @@
-function [Uwn,pOld,tOld] = oseenSolver(p,t,f,fb)
+function [Uwn,pOld,tOld] = oseenSolver(p,t,f,fb,waveNumbers)
 
-
-waveNumbers=-15:16;
 maxWaveNum=length(waveNumbers);
 b=boundedges(p,t);
 Dirichlet_e=b;
 p=p';
 
-ubar =@(x) 1 - norm(x).^2;
-ubarx =@(x) -2*x(:,1);
-ubary =@(x) -2*x(:,2);
+%ubar =@(x) 1 - norm(x).^2;
+%ubarx =@(x) -2*x(:,1);
+%ubary =@(x) -2*x(:,2);
+
+
+ubar =@(x) 1+ x(:,1) + x(:,2);
+ubarx =@(x) 1;
+ubary =@(x) 1;
+
 pOld = p;
 tOld = t;
 
@@ -122,7 +126,7 @@ for e = 1:numberOfElements
 %     Se2 = wOmega(1) * ubar(ip(1,:)) * PhiDyIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
 %          wOmega(2) * ubar(ip(2,:)) * PhiDyIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
 %          wOmega(3) * ubar(ip(3,:)) * PhiDyIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
-% 
+
    Se1 = wOmega(1) * ubarx(ip(1,:)) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
          wOmega(2) * ubarx(ip(2,:)) * PhiIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
          wOmega(3) * ubarx(ip(3,:)) * PhiIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
@@ -188,20 +192,22 @@ M=sparse(M);
 K=sparse(K);
 Btot = @(waveNum) Bs + 1i*waveNum*B3s;
 Visc =@(waveNum) K+waveNum.^2*M;
-momentumEQNs = @(waveNum) [Visc(waveNum), sparse(numberOfNodes.new,numberOfNodes.new), 1i*waveNum*T;
-                           sparse(numberOfNodes.new,numberOfNodes.new), Visc(waveNum), 1i*waveNum*T;
-                           S1, S2, Visc(waveNum)+ 1i*waveNum*T];
+momentumEQNs = @(waveNum) [Visc(waveNum) - 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
+                           sparse(numberOfNodes.new,numberOfNodes.new), Visc(waveNum) - 1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);%1i*waveNum*T;
+                           -S1, -S2, Visc(waveNum) - 1i*waveNum*T];
     
-Awn = @(waveNum) [momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
+Awn = @(waveNum) [-momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 
 Awns=cell(1,length(waveNumbers));
 for i=1:length(waveNumbers)
     Awns(i) = {Awn(waveNumbers(i))};
 end
+
+
 %rank one update to increase rank
 u = [zeros(3*numberOfNodes.new,1); ones(numberOfNodes.old,1)];
 u = sparse(u);
-Awns{maxWaveNum/2} = Awns{maxWaveNum/2}+1*mean(mean(abs(Bs)))*(u*u');
+Awns{1} = Awns{1}+100*mean(mean(abs(Bs)))*(u*u');
 
 
 % Dirichlet boundary
