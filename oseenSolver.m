@@ -1,18 +1,18 @@
-function [Uwn,pOld,tOld] = oseenSolver(p,t,f,fb,waveNumbers)
+function [Uwn,pOld,tOld] = oseenSolver(p,t,f,fb,waveNumbers,xp)
 
 maxWaveNum=length(waveNumbers);
 b=boundedges(p,t);
 Dirichlet_e=b;
 p=p';
 
-%ubar =@(x) 1 - norm(x).^2;
-%ubarx =@(x) -2*x(:,1);
-%ubary =@(x) -2*x(:,2);
+ ubar =@(x) xp(1)^2+xp(2)^2 - x(:,1).^2-x(:,2).^2 ;
+% ubarx =@(x) -2*x(:,1);
+% ubary =@(x) -2*x(:,2);
 
-
-ubar =@(x) 1+ x(:,1) + x(:,2);
-ubarx =@(x) 1;
-ubary =@(x) 1;
+% 
+% ubar =@(x) 1+ x(:,1) + x(:,2);
+% ubarx =@(x) 1;
+% ubary =@(x) 1;
 
 pOld = p;
 tOld = t;
@@ -119,22 +119,28 @@ for e = 1:numberOfElements
     PhiDyIPS = P \ ISPPrimeY;
     PhiDzIPS = P \ IPS; %no derivative because of the fourier transform
     
-%     Se1 = wOmega(1) * ubar(ip(1,:)) * PhiDxIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
-%          wOmega(2) * ubar(ip(2,:)) * PhiDxIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
-%          wOmega(3) * ubar(ip(3,:)) * PhiDxIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
+    
+    ubarx_ip = ubar(p(:,nodes)')'*PhiDxIPS;
+    ubary_ip = ubar(p(:,nodes)')'*PhiDyIPS;
+
+    
+   Se1 = wOmega(1) * ubarx_ip(1) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
+         wOmega(2) * ubarx_ip(2) * PhiIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
+         wOmega(3) * ubarx_ip(3) * PhiIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
+
+    Se2 = wOmega(1) * ubary_ip(1) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
+         wOmega(2) * ubary_ip(2) * PhiIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
+         wOmega(3) * ubary_ip(3) * PhiIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;     
+
 % 
-%     Se2 = wOmega(1) * ubar(ip(1,:)) * PhiDyIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
-%          wOmega(2) * ubar(ip(2,:)) * PhiDyIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
-%          wOmega(3) * ubar(ip(3,:)) * PhiDyIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
-
-   Se1 = wOmega(1) * ubarx(ip(1,:)) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
-         wOmega(2) * ubarx(ip(2,:)) * PhiIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
-         wOmega(3) * ubarx(ip(3,:)) * PhiIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
-
-    Se2 = wOmega(1) * ubary(ip(1,:)) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
-         wOmega(2) * ubary(ip(2,:)) * PhiIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
-         wOmega(3) * ubary(ip(3,:)) * PhiIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
-     
+%    Se1 = wOmega(1) * ubarx(ip(1,:)) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
+%          wOmega(2) * ubarx(ip(2,:)) * PhiIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
+%          wOmega(3) * ubarx(ip(3,:)) * PhiIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
+% 
+%     Se2 = wOmega(1) * ubary(ip(1,:)) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
+%          wOmega(2) * ubary(ip(2,:)) * PhiIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
+%          wOmega(3) * ubary(ip(3,:)) * PhiIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
+%      
     Te = wOmega(1) * ubar(ip(1,:)) * PhiDzIPS(:, 1) *  PhiIPS(:, 1)' * areaOfElement + ...
          wOmega(2) * ubar(ip(2,:)) * PhiDzIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
          wOmega(3) * ubar(ip(3,:)) * PhiDzIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
@@ -192,9 +198,9 @@ M=sparse(M);
 K=sparse(K);
 Btot = @(waveNum) Bs + 1i*waveNum*B3s;
 Visc =@(waveNum) K+waveNum.^2*M;
-momentumEQNs = @(waveNum) [Visc(waveNum) - 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
-                           sparse(numberOfNodes.new,numberOfNodes.new), Visc(waveNum) - 1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);%1i*waveNum*T;
-                           -S1, -S2, Visc(waveNum) - 1i*waveNum*T];
+momentumEQNs = @(waveNum) [Visc(waveNum) + 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
+                           sparse(numberOfNodes.new,numberOfNodes.new), Visc(waveNum) + 1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);
+                           S1, S2, Visc(waveNum) + 1i*waveNum*T];
     
 Awn = @(waveNum) [-momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 

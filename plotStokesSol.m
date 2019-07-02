@@ -5,16 +5,16 @@ function plotStokesSol(p,t,Uwn, varargin)
 % if size(U,1)~=length(U)
 % U=U';
 % end
-zwn=length(Uwn)/2;
+zwn=0;
 if nargin < 3 
     error('not enough inputs')
     
 end
 if nargin == 3 
-    wn = zwn;
+    wn = 1;
 end
 if nargin == 4
-    wn = zwn + varargin{1};
+    wn = varargin{1};
 end
 if nargin > 4 
     wn = zwn;
