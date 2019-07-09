@@ -6,13 +6,6 @@ Dirichlet_e=b;
 p=p';
 
  ubar =@(x) xp(1)^2+xp(2)^2 - x(:,1).^2-x(:,2).^2 ;
-% ubarx =@(x) -2*x(:,1);
-% ubary =@(x) -2*x(:,2);
-
-% 
-% ubar =@(x) 1+ x(:,1) + x(:,2);
-% ubarx =@(x) 1;
-% ubary =@(x) 1;
 
 pOld = p;
 tOld = t;
@@ -21,8 +14,9 @@ tOld = t;
 numberOfNodes.old = size(p, 2);
 numberOfElements = size(t, 1);
 S = zeros(numberOfNodes.old);
+
 counter = numberOfNodes.old + 1;
- 
+
 for e = 1:numberOfElements
     nodes = t(e, :); 
     if (S(nodes(1), nodes(2)) == 0)
@@ -48,6 +42,19 @@ for e = 1:numberOfElements
     t(e, 6) = S(nodes(1), nodes(3));
 end
 numberOfNodes.new = size(p, 2);
+
+
+% figure out column swaps to make matrix more diagonal
+R = zeros(numberOfNodes.new - numberOfNodes.old,1);
+count = 0;
+for i = (numberOfNodes.old + 1):numberOfNodes.new
+    count = count + 1;
+    [a, ~] = find(S == i);
+    R(count) = mean(a);
+end
+R = [(1:numberOfNodes.old)'; R];
+[~, I] = sort(R);
+
 wnl=3*numberOfNodes.new+numberOfNodes.old;
 Dirichlet = [];
 for i=1 : length(Dirichlet_e)
@@ -132,15 +139,6 @@ for e = 1:numberOfElements
          wOmega(2) * ubary_ip(2) * PhiIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
          wOmega(3) * ubary_ip(3) * PhiIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;     
 
-% 
-%    Se1 = wOmega(1) * ubarx(ip(1,:)) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
-%          wOmega(2) * ubarx(ip(2,:)) * PhiIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
-%          wOmega(3) * ubarx(ip(3,:)) * PhiIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
-% 
-%     Se2 = wOmega(1) * ubary(ip(1,:)) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
-%          wOmega(2) * ubary(ip(2,:)) * PhiIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
-%          wOmega(3) * ubary(ip(3,:)) * PhiIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
-%      
     Te = wOmega(1) * ubar(ip(1,:)) * PhiDzIPS(:, 1) *  PhiIPS(:, 1)' * areaOfElement + ...
          wOmega(2) * ubar(ip(2,:)) * PhiDzIPS(:, 2) *  PhiIPS(:, 2)' * areaOfElement + ...
          wOmega(3) * ubar(ip(3,:)) * PhiDzIPS(:, 3) *  PhiIPS(:, 3)' * areaOfElement;
@@ -190,8 +188,17 @@ for e = 1:numberOfElements
         F(nodesi) = F(nodesi) + reshape(Fe, 3*length(nodes), 1);   
     end
 end
+% rearrange everything
+M = M(I, I);
+K = K(I, I);
+S1 = S1(I, I);
+S2 = S2(I, I);
+T = T(I, I);
+B = B([I; I+numberOfNodes.new], :);
+B3 = B3(I, :);
 
 % Putting together the block function
+
 Bs=[sparse(B);sparse(numberOfNodes.new, numberOfNodes.old)];
 B3s=[sparse(2*numberOfNodes.new, numberOfNodes.old); sparse(B3)];
 M=sparse(M);
@@ -203,6 +210,11 @@ momentumEQNs = @(waveNum) [Visc(waveNum) + 1i*waveNum*T, sparse(numberOfNodes.ne
                            S1, S2, Visc(waveNum) + 1i*waveNum*T];
     
 Awn = @(waveNum) [-momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
+schurComp = @(waveNum) Btot(waveNum)'*(momentumEQNs(waveNum)\Btot(waveNum));
+
+PCR = @(waveNum) [momentumEQNs(waveNum), Btot(waveNum); zeros(numberOfNodes.old, 3*numberOfNodes.new), -schurComp(waveNum)];
+PCL = @(waveNum) [momentumEQNs(waveNum), zeros(3*numberOfNodes.new, numberOfNodes.old);Btot(waveNum)', -schurComp(waveNum)];
+
 
 Awns=cell(1,length(waveNumbers));
 for i=1:length(waveNumbers)
@@ -214,7 +226,6 @@ end
 u = [zeros(3*numberOfNodes.new,1); ones(numberOfNodes.old,1)];
 u = sparse(u);
 Awns{1} = Awns{1}+100*mean(mean(abs(Bs)))*(u*u');
-
 
 % Dirichlet boundary
 Dirichlet123 = [Dirichlet; Dirichlet+numberOfNodes.new;Dirichlet+2*numberOfNodes.new];

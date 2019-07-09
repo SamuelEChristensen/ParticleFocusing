@@ -34,7 +34,7 @@ f = @(x,k) [zeros(size(x,1),1)...
 fb=@(x,k) sol(x,k);
 
 
-maxWaveNum = 32;
+maxWaveNum = 64;
 L = 20; 
 z = linspace(-L/2 + L/maxWaveNum, L/2, maxWaveNum);
 z = circshift(z, -maxWaveNum/2+1);
@@ -45,7 +45,7 @@ for i=1:length(initialLengths)
 [p,t]=distmesh2d(fd,@huniform,initialLengths(i),[-1,-1;1,1],[0,0]);
 %[p,t]=distmesh2d(@dpoly,@huniform,initialLengths(i),[0, 0; 2, 2],pv,pv);
     
-    [Uwn,pold,told] = oseenSolver(p,t,f,fb, waveNumbers);
+    [Uwn,pold,told] = oseenSolver(p,t,f,fb, waveNumbers, [1   0]);
     
     U = ifftUwn(Uwn);
     %zwn = length(Uwn)/2;

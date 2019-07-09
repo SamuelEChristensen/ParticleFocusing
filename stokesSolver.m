@@ -14,7 +14,6 @@ numberOfNodes.old = size(p, 2);
 numberOfElements = size(t, 1);
 S = zeros(numberOfNodes.old);
 counter = numberOfNodes.old + 1;
- 
 for e = 1:numberOfElements
     nodes = t(e, :); 
     if (S(nodes(1), nodes(2)) == 0)
@@ -40,6 +39,18 @@ for e = 1:numberOfElements
     t(e, 6) = S(nodes(1), nodes(3));
 end
 numberOfNodes.new = size(p, 2);
+
+R = zeros(numberOfNodes.new - numberOfNodes.old,1);
+count = 0;
+indexMat = repmat(1:numberOfNodes.old, numberOfNodes.old);
+for i = (numberOfNodes.old + 1):numberOfNodes.new
+    count = count + 1;
+    R(count) = mean(indexMat(S == i));
+end
+R = [(1:numberOfNodes.old)'; R];
+[~, I] = sort(R);
+
+
 wnl=3*numberOfNodes.new+numberOfNodes.old;
 Dirichlet = [];
 for i=1 : length(Dirichlet_e)
@@ -102,11 +113,7 @@ for e = 1:numberOfElements
     Me = wOmega(1) * PhiIPS(:, 1) * PhiIPS(:, 1)' * areaOfElement + ...
          wOmega(2) * PhiIPS(:, 2) * PhiIPS(:, 2)' * areaOfElement + ...
          wOmega(3) * PhiIPS(:, 3) * PhiIPS(:, 3)' * areaOfElement;   
-     
-    
-     
-     
-     
+      
     
     %Pressure component
     %phis are quadratic, psis are linear
@@ -148,6 +155,11 @@ for e = 1:numberOfElements
         F(nodesi) = F(nodesi) + reshape(Fe, 3*length(nodes), 1);   
     end
 end
+% rearrange everything
+M = M(I, I);
+K = K(I, I);
+B = B([I; I+numberOfNodes.new], :);
+B3 = B3(I, :);
 
 % Putting together the arrow matrix 
 Bs=[sparse(B);sparse(numberOfNodes.new, numberOfNodes.old)];
