@@ -5,15 +5,15 @@ end
 if size(U,1)~=length(U)
 U=U';
 end
-figure
+%figure
 set(gca, 'Projection', 'perspective')
-caxis([0 1])
+caxis([-1 1])
 daspect([1 1 2])
 view(70, 20)
 axis vis3d
 axis([-1 1 -1 1 -1 1])
 cla
-trisurf(t, p(:,1), p(:,2), real(U), 'EdgeColor', [0.5 0.5 0.5], 'FaceColor', 'interp');
+trisurf(t, p(:,1), p(:,2), real(U(1:length(p))), 'EdgeColor', [0.5 0.5 0.5], 'FaceColor', 'interp');
 colorbar
 drawnow
 

@@ -32,7 +32,7 @@ view(70, 20)
 axis vis3d
 axis([-1 1 -1 1 -1 1])
 cla
-trisurf(t, p(:,1), p(:,2), real(Uwn{wn,i}), 'EdgeColor', 'none', 'FaceColor', 'interp');
+trisurf(t, p(:,1), p(:,2), real(Uwn{wn,i}(1:length(p))), 'EdgeColor', 'none', 'FaceColor', 'interp');
 colorbar
 title(titles{i})
 drawnow

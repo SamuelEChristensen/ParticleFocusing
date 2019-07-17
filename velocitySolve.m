@@ -75,11 +75,18 @@ us = bgFlowIPS * PhiIPS;
 ubar =bgFlow-us;
 
 
-N = @(x,k) 1/((epsilon^2*pi*2)^1.5)*exp(-1/2*(((x(:,1)-xp(1)).^2+(x(:,2)-xp(2)).^2)/epsilon^2+epsilon^2*k^2));
+N = @(x,k) 100*epsilon^2/((epsilon^2*pi*2)^1.5)*exp(-1/2*(((x(:,1)-xp(1)).^2+(x(:,2)-xp(2)).^2)/epsilon^2+epsilon^2*k^2));
 gammax = bgFlowIPS * PhiDxIPS;
 gammay = bgFlowIPS * PhiDyIPS;
-f=@(x,k) 1/epsilon^2*[-gammax*1i*k*N(x, k),...
+f=@(x,k) [-gammax*1i*k*N(x, k),...
           -gammay*1i*k.*N(x,k), 1/epsilon^2*(gammax*(x(:,1)-xp(1)).*N(x,k)+gammay*(x(:,2)-xp(2)).*N(x,k))];
+
+% 
+% N = @(x,k) epsilon/((epsilon^2*pi*2)^1.5)*exp(-1/2*(((x(:,1)-xp(1)).^2+(x(:,2)-xp(2)).^2)/epsilon^2+epsilon^2*k^2));
+% gammax = bgFlowIPS * PhiDxIPS;
+% gammay = bgFlowIPS * PhiDyIPS;
+% f=@(x,k) [-gammax*N(x, k),...
+%           -gammay*N(x,k), -(gammax*N(x,k)+gammay*N(x,k))];
 
 
 % Initialisation of K, F

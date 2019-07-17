@@ -5,9 +5,8 @@
 %pv=[0  0;2  0;2   1;1   1;1   2;  0  2; 0  0];
     
  N=@(x,k) exp(-1/2*(x(:,1).^2+x(:,2).^2+k^2));
-
-initialLengths=[0.2, 0.15, 0.1, 0.05];
-%initialLengths=[0.1];
+initialLengths=[0.2, 0.1, 0.05];
+%initialLengths=[0.05];
 error=zeros(length(initialLengths),2);
 
 
@@ -59,6 +58,7 @@ for i=1:length(initialLengths)
     %plotStokesSol(p,t,U)
 end
 profile viewer
+profile off
 figure
 plot(log(error(:,2))/log(10),log(error(:,1))/log(10))
 plotStokesSol(p,t,U)

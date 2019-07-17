@@ -45,15 +45,16 @@ numberOfNodes.new = size(p, 2);
 
 
 % figure out column swaps to make matrix more diagonal
-R = zeros(numberOfNodes.new - numberOfNodes.old,1);
-count = 0;
-for i = (numberOfNodes.old + 1):numberOfNodes.new
-    count = count + 1;
-    [a, ~] = find(S == i);
-    R(count) = mean(a);
-end
-R = [(1:numberOfNodes.old)'; R];
-[~, I] = sort(R);
+% R = zeros(numberOfNodes.new - numberOfNodes.old,1);
+% count = 0;
+% for i = (numberOfNodes.old + 1):numberOfNodes.new
+%     count = count + 1;
+%     [a, ~] = find(S == i);
+%     R(count) = mean(a);
+% end
+% R = [(1:numberOfNodes.old)'; R];
+% [~, I] = sort(R);
+I = 1:numberOfNodes.new;
 
 wnl=3*numberOfNodes.new+numberOfNodes.old;
 Dirichlet = [];
@@ -71,6 +72,7 @@ end
 % Initialisation of K, F
 K = sparse(numberOfNodes.new,numberOfNodes.new);
 M = sparse(numberOfNodes.new,numberOfNodes.new);
+Mp = sparse(numberOfNodes.old,numberOfNodes.old);
 B = sparse(2*numberOfNodes.new,numberOfNodes.old);
 B3 = sparse(numberOfNodes.new,numberOfNodes.old);
 S1 = sparse(numberOfNodes.new, numberOfNodes.new);
@@ -163,11 +165,17 @@ for e = 1:numberOfElements
          wOmega(2) * PhiDzIPS(:, 2) *  psiPres(:, 2)' * areaOfElement + ...
          wOmega(3) * PhiDzIPS(:, 3) * psiPres(:, 3)' * areaOfElement;
      
+    Mpe = wOmega(1) * psiPres(:, 1) *  psiPres(:, 1)' * areaOfElement + ...
+         wOmega(2) * psiPres(:, 2) *  psiPres(:, 2)' * areaOfElement + ...
+         wOmega(3) * psiPres(:, 3) * psiPres(:, 3)' * areaOfElement;
+     
      
       nodes12 = [nodes, nodes+numberOfNodes.new];
       nodesOld = nodes(1:3);
       K(nodes, nodes) = K(nodes, nodes) + Ke;
       M(nodes, nodes) = M(nodes, nodes) + Me;
+      
+      Mp(nodesOld, nodesOld) = Mp(nodesOld, nodesOld) + Mpe;
       
       S1(nodes, nodes) = S1(nodes, nodes) + Se1;
       S2(nodes, nodes) = S2(nodes, nodes) + Se2;
@@ -188,14 +196,7 @@ for e = 1:numberOfElements
         F(nodesi) = F(nodesi) + reshape(Fe, 3*length(nodes), 1);   
     end
 end
-% rearrange everything
-M = M(I, I);
-K = K(I, I);
-S1 = S1(I, I);
-S2 = S2(I, I);
-T = T(I, I);
-B = B([I; I+numberOfNodes.new], :);
-B3 = B3(I, :);
+
 
 % Putting together the block function
 
@@ -210,11 +211,6 @@ momentumEQNs = @(waveNum) [Visc(waveNum) + 1i*waveNum*T, sparse(numberOfNodes.ne
                            S1, S2, Visc(waveNum) + 1i*waveNum*T];
     
 Awn = @(waveNum) [-momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
-schurComp = @(waveNum) Btot(waveNum)'*(momentumEQNs(waveNum)\Btot(waveNum));
-
-PCR = @(waveNum) [momentumEQNs(waveNum), Btot(waveNum); zeros(numberOfNodes.old, 3*numberOfNodes.new), -schurComp(waveNum)];
-PCL = @(waveNum) [momentumEQNs(waveNum), zeros(3*numberOfNodes.new, numberOfNodes.old);Btot(waveNum)', -schurComp(waveNum)];
-
 
 Awns=cell(1,length(waveNumbers));
 for i=1:length(waveNumbers)
@@ -227,28 +223,79 @@ u = [zeros(3*numberOfNodes.new,1); ones(numberOfNodes.old,1)];
 u = sparse(u);
 Awns{1} = Awns{1}+100*mean(mean(abs(Bs)))*(u*u');
 
-% Dirichlet boundary
+% Dirichlet boundary and diagonlizing
+%Dirichlet123s = [I(Dirichlet); I(Dirichlet)+numberOfNodes.new;I(Dirichlet)+2*numberOfNodes.new];
 Dirichlet123 = [Dirichlet; Dirichlet+numberOfNodes.new;Dirichlet+2*numberOfNodes.new];
+switchbackm = speye(length(I));
+switchbackm = switchbackm(I,:);
+switchbackp = speye(numberOfNodes.old);
+switchback = blkdiag(switchbackm,switchbackm,switchbackm,switchbackp);
+
 for i=1:maxWaveNum
-    Awns{i}(Dirichlet123, :) = 0;
-    Awns{i}(Dirichlet123, Dirichlet123) = eye(numel(Dirichlet123));
-    
+     Awns{i}(Dirichlet123, :) = 0;
+     Awns{i}(Dirichlet123, Dirichlet123) = eye(numel(Dirichlet123));
+     Awns{i} = switchback*Awns{i}*switchback';
     F(Dirichlet123+(i-1)*wnl) = Fb((1:numel(Dirichlet123))+(i-1)*numel(Dirichlet123));
 end
 
-%A = blkdiag(Awns{:});
+% Create Preconditioner
+a1 = 3*numberOfNodes.new;
+M(Dirichlet, :) = 0;
+K(Dirichlet, :) = 0;
+K(Dirichlet, Dirichlet) = -eye(numel(Dirichlet));
+T(Dirichlet, :) = 0;
+K = switchbackm*K*switchbackm';
+M = switchbackm*M*switchbackm';
+T = switchbackm*T*switchbackm';
+Visc = @(waveNum) K+waveNum.^2*M + 0*1i*waveNum*T;
+Fhat = @(waveNum) blkdiag(-Visc(waveNum),-Visc(waveNum),-Visc(waveNum));
+
+
+
+%schurComp = @(index) Awns{index}((a1+1):end,1:a1)*(Awns{index}(1:a1,1:a1)\Awns{index}(1:a1, (1+a1):end));
+
+%PCR = @(index) [Awns{index}(1:a1, 1:a1), Awns{index}(1:a1, (a1+1):end); zeros(numberOfNodes.old, a1), 100*mean(mean(abs(Bs)))*eq(index,1)*ones(numberOfNodes.old)+schurComp(index)];
+%PCL = @(index) [Awns{index}(1:a1,1:a1), zeros(a1, numberOfNodes.old);Awns{index}((a1+1):end, 1:a1), 100*mean(mean(abs(Bs)))*eq(index,1)*ones(numberOfNodes.old)+schurComp(index)];
+schurCompsL = cell(maxWaveNum);
+schurCompsU = cell(maxWaveNum);
+FhatL = cell(maxWaveNum);
+FhatU = cell(maxWaveNum);
+FhatP = cell(maxWaveNum);
+FhatQ = cell(maxWaveNum);
+schurComp = @(index,L,U,P,Q) Awns{index}((a1+1):end,1:a1)*(Q*(U\(L\(P*Awns{index}(1:a1, (1+a1):end)))));
+
+for i = 1:maxWaveNum
+   [L1,U1,P1,Q1] = lu(Fhat(waveNumbers(i)));
+   FhatL(i) = {L1};
+   FhatU(i) = {U1};
+   FhatP(i) = {P1};
+   FhatQ(i) = {Q1};
+   schurCompi = 100*mean(mean(abs(Bs)))*eq(i,1)*ones(numberOfNodes.old)+Mp;%100*mean(mean(abs(Bs)))*eq(i,1)*ones(numberOfNodes.old)-schurComp(i,L1,U1,P1,Q1);
+   [L2,U2] = lu(schurCompi);
+   schurCompsL{i} = L2;
+   schurCompsU{i} = U2;
+end
+
 clear K M Bs B3s
 U=cell(maxWaveNum);
-for i=1:maxWaveNum
-    U{i} = Awns{i}\F((1:wnl)+(i-1)*wnl);
+
+% for i=1:maxWaveNum
+% %      Awns{i} = switchback*Awns{i}*switchback';
+%       U{i} = switchback'*(Awns{i}\(switchback*F((1:wnl)+(i-1)*wnl)));
+% %    U{i} = Awns{i}\F((1:wnl)+(i-1)*wnl);
+% end
+    
+    
+
+
+tol = 10^(-9);
+maxit = 30;
+tic
+for i = 1:maxWaveNum
+U{i} = gmres(Awns{i},switchback*F((1:wnl)+(i-1)*wnl),15, tol,maxit, @(x) PCbackSolve(x,Awns{i}(1:a1, (a1+1):end),FhatL{i}, FhatU{i}, FhatP{i}, FhatQ{i}, schurCompsL{i}, schurCompsU{i},a1));
+U{i} = switchback'*U{i};
 end
-    
-    
 
-
-tol=10^(-10);
-maxit=100;
-%U=gmres(A,F,30,tol,maxit, PCG);
 Uwn=cell(maxWaveNum, 4); % (waveNumbers, u1 u2 u3  p) 
 for i=1:maxWaveNum
    Uwn{i,1} = U{i}((1:numberOfNodes.old)); 
@@ -262,3 +309,4 @@ end
 %   Uwn{i,3} = U((1:numberOfNodes.old)+(i-1)*wnl+2*numberOfNodes.new);
 %   Uwn{i,4} = U((1:numberOfNodes.old)+(i-1)*wnl+3*numberOfNodes.new);
 %end
+end
