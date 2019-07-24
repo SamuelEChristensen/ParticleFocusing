@@ -5,7 +5,7 @@
 %pv=[0  0;2  0;2   1;1   1;1   2;  0  2; 0  0];
     
  N=@(x,k) exp(-1/2*(x(:,1).^2+x(:,2).^2+k^2));
-initialLengths=[0.2, 0.1, 0.05];
+initialLengths=[0.05];
 %initialLengths=[0.05];
 error=zeros(length(initialLengths),2);
 

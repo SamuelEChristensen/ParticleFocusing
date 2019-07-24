@@ -293,7 +293,6 @@ maxit = 30;
 tic
 for i = 1:maxWaveNum
 U{i} = gmres(Awns{i},switchback*F((1:wnl)+(i-1)*wnl),15, tol,maxit, @(x) PCbackSolve(x,Awns{i}(1:a1, (a1+1):end),FhatL{i}, FhatU{i}, FhatP{i}, FhatQ{i}, schurCompsL{i}, schurCompsU{i},a1));
-U{i} = switchback'*U{i};
 end
 
 Uwn=cell(maxWaveNum, 4); % (waveNumbers, u1 u2 u3  p) 
