@@ -51,11 +51,10 @@ Dirichlet=unique(Dirichlet);
 
 % creat f for each particle
 % Frame things in terms of xp
-RHSfunc = cell(numPart, 1);
 us = zeros(numPart,1);
 gammax = zeros(1, numPart);
 gammay = zeros(1, numPart,1);
-bgFlow = 1-p(1, :).^2-p(2, :).^2;
+bgFlow = (1-(p(1, :)).^2-(p(2, :)).^2);
 particleNodes = cell(numPart,1);
 for part =1:numPart
     xpi = xp(:, part);
@@ -83,8 +82,8 @@ for part =1:numPart
 end
 ubar = bgFlow;
 
-N = @(x,k,xpf) 100*epsilon^2/((epsilon^2*pi*2)^1.5)*exp(-1/2*(((x(:,1)-xpf(1,:)).^2+(x(:,2)-xpf(2,:)).^2)/epsilon^2+epsilon^2*k.^2));
-f=@(x,xpf,k,gx,gy) [-gx.*1i*k.*N(x, k, xpf),...
+N = @(x,k,xpf) epsilon^2/((epsilon^2*pi*2)^1.5)*exp(-1/2*(((x(:,1)-xpf(1,:)).^2+(x(:,2)-xpf(2,:)).^2)/epsilon^2+epsilon^2*k.^2));
+f=@(x,xpf,k,gx,gy) 10*pi/3*[-gx.*1i*k.*N(x, k, xpf),...
     -gy.*1i*k.*N(x,k, xpf), 1/epsilon^2*(gx.*(x(:,1)-xpf(1,:)).*N(x,k,xpf)+gy.*(x(:,2)-xpf(2,:)).*N(x,k,xpf))];
 
 
@@ -269,7 +268,6 @@ velocity = zeros(numPart, 2);
 
 UhatNodes1 = zeros(6, maxWaveNum, numPart);
 UhatNodes2 = zeros(6, maxWaveNum, numPart);
-UhatNodes3 = zeros(6, maxWaveNum, numPart);
 parfor waveIndex = 1:maxWaveNum
     
     
@@ -341,16 +339,16 @@ parfor waveIndex = 1:maxWaveNum
     [schurL, schurU] = lu(schurCompi);
     tol = 10^(-6);
     maxit = 30;
-    buttshit = zeros(6, 3, numPart);
+    buttshit = zeros(6, 3, numPart); %you need to create this because of how matlab does slicing
     for i = 1:numPart
         A = Awn(waveNumbers(waveIndex), us(i));
         A(Dirichlet123, :) = 0;
         A(Dirichlet123, Dirichlet123) = eye(numel(Dirichlet123));
-        if i ==1
+        if waveIndex == 1
             A = A+100*mean(mean(abs(Bs)))*(u*u');
         end
         
-        Uhat = gmres(A, F(:, i),15, tol,maxit, @(x) PCbackSolve(x,A(1:a1, (a1+1):end),FhatL,FhatU, FhatP, FhatQ, schurL, schurU, a1));
+         [Uhat,~,~,~,~] = gmres(A, F(:, i),15, tol,maxit, @(x) PCbackSolve(x,A(1:a1, (a1+1):end),FhatL,FhatU, FhatP, FhatQ, schurL, schurU, a1));
         buttshit(:,1, i) = Uhat(particleNodes{i});
         buttshit(:,2, i) = Uhat(particleNodes{i} + numberOfNodes.new);
         buttshit(:,3, i) = Uhat(particleNodes{i} + 2*numberOfNodes.new);

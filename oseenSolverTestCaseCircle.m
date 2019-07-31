@@ -1,7 +1,8 @@
 %test case for oseenSolver on a circle.
  fd=@(p) sqrt(sum(p.^2,2))-1;
+
 %fd=@(p) ddiff(drectangle(p,-1,1,-1,1),dcircle(p,0,0,0.5));
-%fd=@(p) drectangle(p,0,1,0,1);
+fd=@(p) drectangle(p,-1,1,-1,2);
 %pv=[0  0;2  0;2   1;1   1;1   2;  0  2; 0  0];
     
  N=@(x,k) exp(-1/2*(x(:,1).^2+x(:,2).^2+k^2));
@@ -40,10 +41,13 @@ z = circshift(z, -maxWaveNum/2+1);
 waveNumbers = -2*pi*[0:maxWaveNum/2, -(maxWaveNum/2-1):-1]/L;
 profile on
 for i=1:length(initialLengths)
-%[p,t]=distmesh2d(fd,@huniform,initialLengths(i),[-1,-1;1,1],[1,1;  -1,1; -1,-1; 1,-1;  1,1]);
-[p,t]=distmesh2d(fd,@huniform,initialLengths(i),[-1,-1;1,1],[0,0]);
+[p,t]=distmesh2d(fd,@huniform,initialLengths(i),[-1,-1;1,2],[1,2;  -1,2; -1,-1; 1,-1;  1,1]);
+%[p,t]=distmesh2d(fd,@huniform,initialLengths(i),[-1,-1;1,1],[0,0]);
 %[p,t]=distmesh2d(@dpoly,@huniform,initialLengths(i),[0, 0; 2, 2],pv,pv);
-    
+    pv=[-0.4 -0.5;0.4 -0.2;0.4 -0.7;1.5 -0.4;0.9 0.1;
+        1.6 0.8;0.5 0.5;0.2 1;0.1 0.4;-0.7 0.7;-0.4 -0.5];
+    [p,t]=distmesh2d(@dpoly,@huniform,0.05,[-1,-1; 2,1],pv,pv);
+
     [Uwn,pold,told] = oseenSolver(p,t,f,fb, waveNumbers, [1   0]);
     
     U = ifftUwn(Uwn);
