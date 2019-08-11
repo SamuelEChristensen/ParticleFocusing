@@ -82,9 +82,9 @@ for part =1:numPart
 end
 ubar = bgFlow;
 
-N = @(x,k,xpf) epsilon^2/((epsilon^2*pi*2)^1.5)*exp(-1/2*(((x(:,1)-xpf(1,:)).^2+(x(:,2)-xpf(2,:)).^2)/epsilon^2+epsilon^2*k.^2));
-f=@(x,xpf,k,gx,gy) 10*pi/3*[-gx.*1i*k.*N(x, k, xpf),...
-    -gy.*1i*k.*N(x,k, xpf), 1/epsilon^2*(gx.*(x(:,1)-xpf(1,:)).*N(x,k,xpf)+gy.*(x(:,2)-xpf(2,:)).*N(x,k,xpf))];
+N = @(x,k,xpf) epsilon/((epsilon^2*pi*2)^1.5)*exp(-1/2*(((x(:,1)-xpf(1,:)).^2+(x(:,2)-xpf(2,:)).^2)/epsilon^2+epsilon^2*k.^2));
+f=@(x,xpf,k,gx,gy) 10*pi/3*[gx.*1i*k.*N(x, k, xpf),...
+    gy.*1i*k.*N(x,k, xpf), -1/epsilon^2*(gx.*(x(:,1)-xpf(1,:)).*N(x,k,xpf)+gy.*(x(:,2)-xpf(2,:)).*N(x,k,xpf))];
 
 
 
@@ -243,31 +243,55 @@ Bs=[sparse(B);sparse(numberOfNodes.new, numberOfNodes.old)];
 B3s=[sparse(2*numberOfNodes.new, numberOfNodes.old); sparse(B3)];
 M=sparse(M);
 K=sparse(K);
-Btot = @(waveNum) Bs + 1i*waveNum*B3s;
-Visc =@(waveNum) K+waveNum.^2*M;
-
-
-
-% Create Preconditioner
 a1 = 3*numberOfNodes.new;
 M(Dirichlet, :) = 0;
 K(Dirichlet, :) = 0;
 K(Dirichlet, Dirichlet) = -eye(numel(Dirichlet));
-Visc = @(waveNum) K + waveNum.^2*M;
-Fhat = @(waveNum) blkdiag(-Visc(waveNum), -Visc(waveNum), -Visc(waveNum));
+
+
+
 
 %% Do individual solves for particles
-momentumEQNs = @(waveNum, us) [K + (waveNum.^2-1i*waveNum*us)*M + 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
-    sparse(numberOfNodes.new,numberOfNodes.new), K + (waveNum.^2-1i*waveNum*us)*M + 1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);
-    S1, S2, K + (waveNum.^2-1i*waveNum*us)*M + 1i*waveNum*T];
-
-Awn = @(waveNum, us) [-momentumEQNs(waveNum, us), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 
 velocity = zeros(numPart, 2);
 %AwnPool = parallel.pool.Constant(@() Awn);
+% T = parallel.pool.Constant(T);
+% K = parallel.pool.Constant(K);
+% M = parallel.pool.Constant(M);
+% S1 = parallel.pool.Constant(S1);
+% S2 = parallel.pool.Constant(S2);
+% Bs = parallel.pool.Constant(Bs);
+% B3s = parallel.pool.Constant(B3s);
+% 
+% UhatNodes1 = zeros(6, maxWaveNum, numPart);
+% UhatNodes2 = zeros(6, maxWaveNum, numPart);
+% 
+% 
+% Btot = @(waveNum) Bs.Value + 1i*waveNum*B3s.Value;
+% momentumEQNs = @(waveNum, us) [K.Value + (waveNum.^2-1i*waveNum*us)*M.Value + 1i*waveNum*T.Value, sparse(numberOfNodes.new, 2*numberOfNodes.new);
+%     sparse(numberOfNodes.new,numberOfNodes.new), K.Value + (waveNum.^2-1i*waveNum*us)*M.Value + 1i*waveNum*T.Value, sparse(numberOfNodes.new,numberOfNodes.new);
+%     S1.Value, S2.Value, K.Value + (waveNum.^2-1i*waveNum*us)*M.Value + 1i*waveNum*T.Value];
+% % Create Preconditioner
+% Visc = @(waveNum) K.Value + waveNum.^2*M.Value;
+% Fhat = @(waveNum) blkdiag(-Visc(waveNum), -Visc(waveNum), -Visc(waveNum));
+% 
+% Awn = @(waveNum, us) [-momentumEQNs(waveNum, us), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
+
 
 UhatNodes1 = zeros(6, maxWaveNum, numPart);
 UhatNodes2 = zeros(6, maxWaveNum, numPart);
+
+
+Btot = @(waveNum) Bs + 1i*waveNum*B3s;
+momentumEQNs = @(waveNum, us) [K + (waveNum.^2+1i*waveNum*us)*M - 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
+    sparse(numberOfNodes.new,numberOfNodes.new), K + (waveNum.^2+1i*waveNum*us)*M - 1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);
+    -S1, -S2, K + (waveNum.^2+1i*waveNum*us)*M - 1i*waveNum*T];
+% Create Preconditioner
+Visc = @(waveNum) K + waveNum.^2*M;
+Fhat = @(waveNum) blkdiag(-Visc(waveNum), -Visc(waveNum), -Visc(waveNum));
+
+Awn = @(waveNum, us) [-momentumEQNs(waveNum, us), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
+ticBytes(gcp);
 parfor waveIndex = 1:maxWaveNum
     
     
@@ -348,7 +372,7 @@ parfor waveIndex = 1:maxWaveNum
             A = A+100*mean(mean(abs(Bs)))*(u*u');
         end
         
-         [Uhat,~,~,~,~] = gmres(A, F(:, i),15, tol,maxit, @(x) PCbackSolve(x,A(1:a1, (a1+1):end),FhatL,FhatU, FhatP, FhatQ, schurL, schurU, a1));
+         [Uhat] = gmres(A, F(:, i),15, tol,maxit, @(x) PCbackSolve(x,A(1:a1, (a1+1):end),FhatL,FhatU, FhatP, FhatQ, schurL, schurU, a1));
         buttshit(:,1, i) = Uhat(particleNodes{i});
         buttshit(:,2, i) = Uhat(particleNodes{i} + numberOfNodes.new);
         buttshit(:,3, i) = Uhat(particleNodes{i} + 2*numberOfNodes.new);
@@ -365,6 +389,7 @@ parfor waveIndex = 1:maxWaveNum
     %     end
 
 end
+tocBytes(gcp)
 
 %inverse fourier transform and evaluate velocity
 

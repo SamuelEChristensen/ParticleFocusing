@@ -66,7 +66,7 @@ Dirichlet=unique(Dirichlet);
 Fb=zeros(length(Dirichlet)*maxWaveNum,1);
 for i=1:maxWaveNum
     waveNum=waveNumbers(i);
- Fb((1:3*length(Dirichlet))+(i-1)*3*length(Dirichlet))=reshape(fb(p(:,Dirichlet)',waveNum),3*length(Dirichlet),1);
+ Fb((1:3*length(Dirichlet))+(i-1)*3*length(Dirichlet))=reshape(fb(p(:,Dirichlet).',waveNum),3*length(Dirichlet),1);
 end
 
 % Initialisation of K, F
@@ -206,9 +206,9 @@ M=sparse(M);
 K=sparse(K);
 Btot = @(waveNum) Bs + 1i*waveNum*B3s;
 Visc =@(waveNum) K+waveNum.^2*M;
-momentumEQNs = @(waveNum) [Visc(waveNum) + 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
-                           sparse(numberOfNodes.new,numberOfNodes.new), Visc(waveNum) + 1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);
-                           S1, S2, Visc(waveNum) + 1i*waveNum*T];
+momentumEQNs = @(waveNum) [Visc(waveNum) - 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
+                           sparse(numberOfNodes.new,numberOfNodes.new), Visc(waveNum) - 1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);
+                           S1, S2, Visc(waveNum) - 1i*waveNum*T];
     
 Awn = @(waveNum) [-momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 
@@ -234,7 +234,7 @@ switchback = blkdiag(switchbackm,switchbackm,switchbackm,switchbackp);
 for i=1:maxWaveNum
      Awns{i}(Dirichlet123, :) = 0;
      Awns{i}(Dirichlet123, Dirichlet123) = eye(numel(Dirichlet123));
-     Awns{i} = switchback*Awns{i}*switchback';
+     Awns{i} = switchback*Awns{i}*switchback.';
     F(Dirichlet123+(i-1)*wnl) = Fb((1:numel(Dirichlet123))+(i-1)*numel(Dirichlet123));
 end
 
@@ -247,7 +247,7 @@ T(Dirichlet, :) = 0;
 K = switchbackm*K*switchbackm';
 M = switchbackm*M*switchbackm';
 T = switchbackm*T*switchbackm';
-Visc = @(waveNum) K+waveNum.^2*M + 0*1i*waveNum*T;
+Visc = @(waveNum) K+waveNum.^2*M;
 Fhat = @(waveNum) blkdiag(-Visc(waveNum),-Visc(waveNum),-Visc(waveNum));
 
 
@@ -288,7 +288,7 @@ U=cell(maxWaveNum);
     
 
 
-tol = 10^(-9);
+tol = 10^(-5);
 maxit = 30;
 tic
 for i = 1:maxWaveNum
