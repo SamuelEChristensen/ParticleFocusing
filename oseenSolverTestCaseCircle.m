@@ -3,11 +3,11 @@
 
 %fd=@(p) ddiff(drectangle(p,-1,1,-1,1),dcircle(p,0,0,0.5));
 %fd=@(p) drectangle(p,-1,1,-1,2);
-%pv=[0  0;2  0;2   1;1   1;1   2jj;  0  2; 0  0];
-    epsi=0.2;
+pv=[0  0;2  0;2   1;1   1;1   2;  0  2; 0  0];
+    epsi=0.8;
  N=@(x,k) epsi*exp(-1/(2*epsi^2)*(x(:,1).^2+x(:,2).^2)-epsi^2/2*k^2);
  Nr=@(x,z) exp(-1/(2*epsi^2)*(x(:,1).^2+x(:,2).^2+z^2));
-initialLengths=[0.2,0.1];
+initialLengths=[0.051];
 %initialLengths=[0.05];
 error=zeros(length(initialLengths),2);
 
@@ -36,7 +36,7 @@ fb=@(x,k) sol(x,k);
 
 
 maxWaveNum = 64;
-L = 10; 
+L = 20; 
 z = linspace(-L/2 + L/maxWaveNum, L/2, maxWaveNum);
 z = circshift(z, -maxWaveNum/2+1);
 waveNumbers = -2*pi*[0:maxWaveNum/2, -(maxWaveNum/2-1):-1]/L;
@@ -65,5 +65,5 @@ end
 profile viewer
 profile off
 figure
-plot(log(error(:,2)), log(error(:,1)))
+plot(log(error(:,2))/log(10), log(error(:,1))/log(10))
 plotStokesSol(p,t,U)

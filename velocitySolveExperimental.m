@@ -55,6 +55,7 @@ us = zeros(numPart,1);
 gammax = zeros(1, numPart);
 gammay = zeros(1, numPart,1);
 bgFlow = (1-4*(0.5-p(2, :)).^2);
+%bgFlow = (1-(p(1, :)).^2-(p(2, :)).^2);
 particleNodes = cell(numPart,1);
 for part =1:numPart
     xpi = xp(:, part);
@@ -84,8 +85,8 @@ ubar = bgFlow;
 
 N = @(x,xpf) epsilon/((epsilon^2*pi*2)^1.5)*exp(-1/2*(((x(:,1)-xpf(1,:)).^2+(x(:,2)-xpf(2,:)).^2)/epsilon^2));
 Nk = @(k) exp(-epsilon^2/2*k.^2);
-f=@(x,xpf,gx,gy) -10*pi/3*[1i*gx.*N(x, xpf),...
-    1i*gy.*N(x, xpf), -1/epsilon^2*(gx.*(x(:,1)-xpf(1,:)).*N(x,xpf)+gy.*(x(:,2)-xpf(2,:)).*N(x,xpf))];
+f=@(x,xpf,gx,gy) -10*pi/3*[-1i*gx.*N(x, xpf),...
+    -1i*gy.*N(x, xpf), -1/epsilon^2*(gx.*(x(:,1)-xpf(1,:)).*N(x,xpf)+gy.*(x(:,2)-xpf(2,:)).*N(x,xpf))];
 
 
 
@@ -263,6 +264,9 @@ M=sparse(M);
 K=sparse(K);
 a1 = 3*numberOfNodes.new;
 M(Dirichlet, :) = 0;
+T(Dirichlet, :) = 0;
+S1(Dirichlet, :) = 0;
+S2(Dirichlet, :) = 0;
 K(Dirichlet, :) = 0;
 K(Dirichlet, Dirichlet) = -eye(numel(Dirichlet));
 
@@ -300,14 +304,18 @@ UhatNodes1 = zeros(6, maxWaveNum, numPart);
 UhatNodes2 = zeros(6, maxWaveNum, numPart);
 
 Btot = @(waveNum) Bs + 1i*waveNum*B3s;
-momentumEQNs = @(waveNum, us) [K + (waveNum.^2-1i*waveNum*us)*M + 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
-    sparse(numberOfNodes.new,numberOfNodes.new), K + (waveNum.^2 - 1i*waveNum*us)*M + 1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);
-    S1, S2, K + (waveNum.^2 - 1i*waveNum*us)*M + 1i*waveNum*T];
+% momentumEQNs = @(waveNum, us) [K + (waveNum.^2 + 1i*waveNum*us)*M - 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
+%     sparse(numberOfNodes.new,numberOfNodes.new), K + (waveNum.^2 + 1i*waveNum*us)*M - 1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);
+%     S1, S2, K + (waveNum.^2 + 1i*waveNum*us)*M - 1i*waveNum*T];
+momentumEQNs = @(waveNum) [K + (waveNum.^2)*M - 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
+    sparse(numberOfNodes.new,numberOfNodes.new), K + (waveNum.^2)*M - 1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);
+    S1, S2, K + (waveNum.^2)*M - 1i*waveNum*T];
+
 % Create Preconditioner
 Visc = @(waveNum) K + waveNum.^2*M;
 Fhat = @(waveNum) blkdiag(-Visc(waveNum), -Visc(waveNum), -Visc(waveNum));
 
-Awn = @(waveNum, us) [-momentumEQNs(waveNum, us), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
+AwnBase = @(waveNum) [-momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 parfor waveIndex = 1:maxWaveNum
     
     
@@ -349,10 +357,15 @@ parfor waveIndex = 1:maxWaveNum
     maxit = 30;
     buttshit = zeros(6, 3, numPart); %you need to create this because of how matlab does slicing
     F = RHS(waveNumbers(waveIndex));
+    ABase = AwnBase(waveNumbers(waveIndex));
+    A=ABase;
+    A(Dirichlet123, :) = 0;
     for i = 1:numPart
-        A = Awn(waveNumbers(waveIndex), us(i));
-        A(Dirichlet123, :) = 0;
-        A(Dirichlet123, Dirichlet123) = eye(numel(Dirichlet123));
+        A(1:a1/3,1:a1/3) = ABase(1:a1/3,1:a1/3)-1i*waveNumbers(waveIndex)*us(i)*M;
+        A((a1/3+1):(2*a1/3),(a1/3+1):(2*a1/3)) = A(1:a1/3,1:a1/3);
+        A((2*a1/3+1):(a1),(2*a1/3+1):(a1)) = A(1:a1/3,1:a1/3);
+        %A(Dirichlet123, :) = 0;
+        %A(Dirichlet123, Dirichlet123) = eye(numel(Dirichlet123));
         if waveIndex == 1
             A = A+100*mean(mean(abs(Bs)))*(u*u');
         end
