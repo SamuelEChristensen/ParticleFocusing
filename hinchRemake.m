@@ -2,24 +2,26 @@
 % fd=@(p) drectangle(p,0,4,0,1);
 % [p,t]=distmesh2d(fd,@huniform,0.02229,[0, 0;4, 1],[0  0; 0  1;  4  1;  4   0]);
 % initialLength epsilon number of modes
-%paramSet = {[0.1  0.1 64]  [0.05  0.04  128]   [0.025  0.02  256]    [0.014   0.01  512]};
-paramSet = {[0.014   0.01  512],   [0.008   0.05  1024]};
+%paramSet = {[0.01   0.01  512]  [0.0141   0.01  256]   [0.028   0.01  512]    [0.0141   0.01  512]};
+paramSet = {[0.1  0.1  16]  [0.05   0.05  32] [0.025   0.025  64] [0.0125   0.0125  128]};
+%paramSet = {[0.02   0.02  128] };
 xp = [2*ones(size(0.1:0.05:0.45)); 0.1:0.05:0.45];
 velocities = zeros(length(paramSet), length(xp),2);
 for i = 1:length(paramSet)
     parami = paramSet{i};
     
 fd=@(p) drectangle(p,0,4,0,1);
-fh=@(p) min(parami(1)+3*drectangle(p, 1.99, 2.01, 0, 0.5).^3,0.1);
+fh=@(p) min(parami(1)+1.5*drectangle(p, 1.99, 2.01, 0, 0.5).^3,0.1);
 [p,t]=distmesh2d(fd,fh,parami(1),[0, 0;4, 1],[0  0; 0  1;  4  1;  4   0]);
 maxWaveNum = parami(3);
 L = 4;
-z = linspace(-L/2 + L/maxWaveNum, L/2, maxWaveNum);
-z = circshift(z, -maxWaveNum/2+1);
-waveNumbers = -2*pi*[0:maxWaveNum/2, -(maxWaveNum/2-1):-1]/L;
+% z = linspace(-L/2 + L/maxWaveNum, L/2, maxWaveNum);
+% z = circshift(z, -maxWaveNum/2+1);
+%waveNumbers = -2*pi*[0:maxWaveNum/2, -(maxWaveNum/2-1):-1]/L;
+waveNumbers = -2*pi*[0:(maxWaveNum-1)]/L;
 tic
 [u,pold,told]=velocitySolveExperimental(p,t, parami(2), waveNumbers, xp);
-velocities(i,:,:) = (2*pi)^0.5*maxWaveNum/L*u;
+velocities(i,:,:) = (2*pi)^0.5*maxWaveNum/L*u*2;
 %(2*pi)^0.5*maxWaveNum/L*u
 toc
 end

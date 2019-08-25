@@ -88,6 +88,10 @@ Nk = @(k) exp(-epsilon^2/2*k.^2);
 f=@(x,xpf,gx,gy) -10*pi/3*[-1i*gx.*N(x, xpf),...
     -1i*gy.*N(x, xpf), -1/epsilon^2*(gx.*(x(:,1)-xpf(1,:)).*N(x,xpf)+gy.*(x(:,2)-xpf(2,:)).*N(x,xpf))];
 
+f1=@(x,xpf,gx,gy) N(x, xpf);
+%f2=@(x,xpf,gx,gy) -1i*gy.*N(x, xpf);
+%f3=@(x,xpf,gx,gy) (gN(x,xpf)+gy.*N(x,xpf));
+
 
 
 %
@@ -109,6 +113,9 @@ S1 = sparse(numberOfNodes.new, numberOfNodes.new);
 S2 = sparse(numberOfNodes.new, numberOfNodes.new);
 T = sparse(numberOfNodes.new, numberOfNodes.new);
 F0 = zeros(wnl, numPart);
+F01 = zeros(numberOfNodes.new, numPart);
+F02 = zeros(numberOfNodes.new, numPart);
+F03 = zeros(numberOfNodes.new, numPart);
 
 % Gaussian quadrature points & weights
 eta_xi = [2/3 1/6 1/6;
@@ -248,14 +255,31 @@ for e = 1:numberOfElements
         
         %linearize with respect to multiple xp
         PhiIPS = P \ IPS;
-        Fe = wOmega(1) * PhiIPS(:, 1) * f(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
-            wOmega(2) * PhiIPS(:, 2) * f(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
-            wOmega(3) * PhiIPS(:, 3) * f(ip(3, :), xp, gammax, gammay) * areaOfElement;
+%         Fe = wOmega(1) * PhiIPS(:, 1) * f(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
+%             wOmega(2) * PhiIPS(:, 2) * f(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
+%             wOmega(3) * PhiIPS(:, 3) * f(ip(3, :), xp, gammax, gammay) * areaOfElement;
+%         
+%         F0(nodes123, :) = F0(nodes123, :) + [Fe(:,1:end/3); Fe(:,(1:end/3) + end/3); Fe(:,(1:end/3) + 2*end/3)];
+%         
         
-        F0(nodes123, :) = F0(nodes123, :) + [Fe(:,1:end/3); Fe(:,(1:end/3) + end/3); Fe(:,(1:end/3) + 2*end/3)];
+        F1e = wOmega(1) * PhiIPS(:, 1) * f1(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
+            wOmega(2) * PhiIPS(:, 2) * f1(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
+            wOmega(3) * PhiIPS(:, 3) * f1(ip(3, :), xp, gammax, gammay) * areaOfElement;
+        
+        F2e = wOmega(1) * PhiDxIPS(:, 1) * f1(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
+            wOmega(2) * PhiDxIPS(:, 2) * f1(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
+            wOmega(3) * PhiDxIPS(:, 3) * f1(ip(3, :), xp, gammax, gammay) * areaOfElement;
+        
+        F3e = wOmega(1) * PhiDyIPS(:, 1) * f1(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
+            wOmega(2) * PhiDyIPS(:, 2) * f1(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
+            wOmega(3) * PhiDyIPS(:, 3) * f1(ip(3, :), xp, gammax, gammay) * areaOfElement;
+        
+        F01(nodes, :) = F01(nodes, :) + F1e;
+        F02(nodes, :) = F02(nodes, :) + F2e;
+        F03(nodes, :) = F03(nodes, :) + F3e;
 end
 
-RHS = @(k) [k*F0(1:(2*numberOfNodes.new), :); F0((2*numberOfNodes.new+1):end, :)]*Nk(k);
+RHS = @(k) -10*pi/3*Nk(k)*[-1i*k*F01*diag(gammax); -1i*k*F01*diag(gammay); -(F02*diag(gammax)+F03*diag(gammay)); sparse(numberOfNodes.old, numPart)];
 
 % Putting together the block function
 Bs=[sparse(B);sparse(numberOfNodes.new, numberOfNodes.old)];
@@ -315,7 +339,7 @@ momentumEQNs = @(waveNum) [K + (waveNum.^2)*M - 1i*waveNum*T, sparse(numberOfNod
 Visc = @(waveNum) K + waveNum.^2*M;
 Fhat = @(waveNum) blkdiag(-Visc(waveNum), -Visc(waveNum), -Visc(waveNum));
 
-AwnBase = @(waveNum) [-momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
+AwnBase = @(waveNum) [-momentumEQNs(waveNum), -Btot(waveNum); -Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 parfor waveIndex = 1:maxWaveNum
     
     
@@ -390,8 +414,11 @@ end
 
 %inverse fourier transform and evaluate velocity
 
-Unodes1 = ifft(UhatNodes1, maxWaveNum, 2);
-Unodes2 = ifft(UhatNodes2, maxWaveNum, 2);
+% Unodes1 = ifft(UhatNodes1, maxWaveNum, 2);
+% Unodes2 = ifft(UhatNodes2, maxWaveNum, 2);
+Unodes1 = sum(real(UhatNodes1), 2)/maxWaveNum;
+Unodes2 = sum(real(UhatNodes2), 2)/maxWaveNum;
+
 for i = 1:numPart
     nodes = particleNodes{i};
     xpi = xp(:,i);
@@ -404,6 +431,6 @@ for i = 1:numPart
     
     PhiIPS = P \ IPS;
     
-    velocity(i,1) = Unodes1(:,1,i)' * PhiIPS;
-    velocity(i,2) = Unodes2(:,1,i)' * PhiIPS;
+    velocity(i,1) = Unodes1(:,i)' * PhiIPS;
+    velocity(i,2) = Unodes2(:,i)' * PhiIPS;
 end
