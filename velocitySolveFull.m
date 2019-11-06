@@ -1,4 +1,4 @@
-function [velocity,pOld,tOld] = velocitySolveExperimental(p,t,epsilon,waveNumbers,xp)
+function [velocity,pOld,tOld] = velocitySolveFull(p,t,epsilon,waveNumbers,xp,bgFlow)
 %% Calculate stuff used in all solves.
 maxWaveNum=length(waveNumbers);
 numPart = size(xp, 2);
@@ -54,10 +54,12 @@ Dirichlet=unique(Dirichlet);
 us = zeros(numPart,1);
 gammax = zeros(1, numPart);
 gammay = zeros(1, numPart,1);
-bgFlow = (1-4*(0.5-p(2, :)).^2);
+%bgFlow = 75*(1-4*(0.5-p(2, :)).^2);
 %bgFlow = (1-(p(1, :)).^2-(p(2, :)).^2);
 %bgFlow = 1*((0.5-p(2,:).^2)+(1-p(1, :)).^2);
 particleNodes = cell(numPart,1);
+uMax = max(bgFlow);
+bgFlow = bgFlow/uMax;
 for part =1:numPart
     xpi = xp(:, part);
     xpn = whatTriangleIsThisPointIn(p,t,xpi);
@@ -399,11 +401,11 @@ parfor waveIndex = 1:maxWaveNum
     
         buttshit(:,1, i) = Uhat(particleNodes{i});
         buttshit(:,2, i) = Uhat(particleNodes{i} + numberOfNodes.new);
-     %  buttshit(:,3, i) = Uhat(particleNodes{i} + 2*numberOfNodes.new);
+        buttshit(:,3, i) = Uhat(particleNodes{i} + 2*numberOfNodes.new);
     end
     UhatNodes1(:, waveIndex, :) = buttshit(:, 1, :);
     UhatNodes2(:, waveIndex, :) = buttshit(:, 2, :);
-    %UhatNodes3(:, waveIndex, :) = buttshit(:, 3, :);
+    UhatNodes3(:, waveIndex, :) = buttshit(:, 3, :);
     
     %     Uwn=cell(maxWaveNum, 4); % (waveNumbers, u1 u2 u3  p)
     %     for i=1:maxWaveNum

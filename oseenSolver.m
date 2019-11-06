@@ -210,7 +210,7 @@ momentumEQNs = @(waveNum) [Visc(waveNum) - 1i*waveNum*T, sparse(numberOfNodes.ne
                            sparse(numberOfNodes.new,numberOfNodes.new), Visc(waveNum) - 1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);
                            S1, S2, Visc(waveNum) - 1i*waveNum*T];
     
-Awn = @(waveNum) [-momentumEQNs(waveNum), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
+Awn = @(waveNum) [-momentumEQNs(waveNum), -Btot(waveNum); -Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 
 Awns=cell(1,length(waveNumbers));
 for i=1:length(waveNumbers)

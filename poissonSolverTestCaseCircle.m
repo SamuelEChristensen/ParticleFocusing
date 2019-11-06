@@ -7,7 +7,7 @@ initialLengths=[0.25,0.2,0.15,0.1,0.05];
 error=zeros(length(initialLengths),2);
 
 
-sol=@(x) [x(:,1).^2.*x(:,2)];
+sol=@(x) [-x(:,1).^2.*x(:,2)];
 f=@(x) [-2*x(:,2)];
 
 %sol=@(x,k) [zeros(size(x,1),1), ones(size(x,1),1),ones(size(x,1),1)];

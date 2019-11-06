@@ -13,7 +13,7 @@ tOld = t;
 % Quadratic elements contain six nodes per triangle: add three nodes at the middle of the edges of each triangle
 numberOfNodes.old = size(p, 2);
 numberOfElements = size(t, 1);
-S = zeros(numberOfNodes.old);
+S = sparse(numberOfNodes.old, numberOfNodes.old);
 counter = numberOfNodes.old + 1;
  
 for e = 1:numberOfElements
@@ -110,13 +110,13 @@ end
 % Dirichlet boundary
 
 K(Dirichlet, :) = 0;
-K(Dirichlet, Dirichlet) = eye(numel(Dirichlet));
+K(Dirichlet, Dirichlet) = -speye(numel(Dirichlet));
 
 F(Dirichlet) = Fb(1:numel(Dirichlet));
 
 
 
-U = K\F;
+U = -(K\F);
 
 
 tol=10^(-10);
