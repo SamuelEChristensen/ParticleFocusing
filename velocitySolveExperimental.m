@@ -1,4 +1,4 @@
-function [velocity,pOld,tOld] = velocitySolveExperimental(p,t,epsilon,waveNumbers,xp)
+function [velocity,p,t] = velocitySolveExperimental(p,t,epsilon,waveNumbers,xp)
 %% Calculate stuff used in all solves.
 maxWaveNum=length(waveNumbers);
 numPart = size(xp, 2);
@@ -7,8 +7,6 @@ Dirichlet_e=b;
 p=p';
 fb = @(x, k) [0*x(:,2), 0*x(:,1), 0*x(:,1)+0*k];
 
-pOld = p;
-tOld = t;
 
 % Quadratic elements contain six nodes per triangle: add three nodes at the middle of the edges of each triangle
 numberOfNodes.old = size(p, 2);
@@ -300,7 +298,7 @@ K(Dirichlet, Dirichlet) = -eye(numel(Dirichlet));
 
 %% Do individual solves for particles
 
-velocity = zeros(numPart, 2);
+velocity = zeros(numberOfNodes.new,numPart, 2);
 %AwnPool = parallel.pool.Constant(@() Awn);
 % T = parallel.pool.Constant(T);
 % K = parallel.pool.Constant(K);
@@ -325,9 +323,9 @@ velocity = zeros(numPart, 2);
 % Awn = @(waveNum, us) [-momentumEQNs(waveNum, us), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 
 
-UhatNodes1 = zeros(6, maxWaveNum, numPart);
-UhatNodes2 = zeros(6, maxWaveNum, numPart);
-UhatNodes3 = zeros(6, maxWaveNum, numPart);
+UhatNodes1 = zeros(numberOfNodes.new, maxWaveNum, numPart);
+UhatNodes2 = zeros(numberOfNodes.new, maxWaveNum, numPart);
+UhatNodes3 = zeros(numberOfNodes.new, maxWaveNum, numPart);
 
 Btot = @(waveNum) Bs + 1i*waveNum*B3s;
 % momentumEQNs = @(waveNum, us) [K + (waveNum.^2 + 1i*waveNum*us)*M - 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
@@ -381,7 +379,7 @@ parfor waveIndex = 1:maxWaveNum
     [schurL, schurU] = lu(schurCompi);
     tol = 10^(-4);
     maxit = 30;
-    buttshit = zeros(6, 3, numPart); %you need to create this because of how matlab does slicing
+    buttshit = zeros(numberOfNodes.new, 3, numPart); %you need to create this because of how matlab does slicing
     F = RHS(waveNumbers(waveIndex));
     ABase = AwnBase(waveNumbers(waveIndex));
     A=ABase;
@@ -397,8 +395,8 @@ parfor waveIndex = 1:maxWaveNum
         end
      Uhat = gmres(A, F(:, i),15, tol,maxit, @(x) PCbackSolve(x,A(1:a1, (a1+1):end),FhatL,FhatU, FhatP, FhatQ, schurL, schurU, a1));
     
-        buttshit(:,1, i) = Uhat(particleNodes{i});
-        buttshit(:,2, i) = Uhat(particleNodes{i} + numberOfNodes.new);
+        buttshit(:,1, i) = Uhat(1:numberOfNodes.new);
+        buttshit(:,2, i) = Uhat((1:numberOfNodes.new) + numberOfNodes.new);
      %  buttshit(:,3, i) = Uhat(particleNodes{i} + 2*numberOfNodes.new);
     end
     UhatNodes1(:, waveIndex, :) = buttshit(:, 1, :);
@@ -419,21 +417,21 @@ end
 
 % Unodes1 = ifft(UhatNodes1, maxWaveNum, 2);
 % Unodes2 = ifft(UhatNodes2, maxWaveNum, 2);
-Unodes1 = sum(real(UhatNodes1), 2)/maxWaveNum;
-Unodes2 = sum(real(UhatNodes2), 2)/maxWaveNum;
+velocity(:,:,1) = sum(real(UhatNodes1), 2)/maxWaveNum;
+velocity(:,:,2) = sum(real(UhatNodes2), 2)/maxWaveNum;
 %velocity = UhatNodes2(1,:,:);
-for i = 1:numPart
-    nodes = particleNodes{i};
-    xpi = xp(:,i);
-    P = [ones(1, 6);
-        p(:, nodes);
-        p(1, nodes).^2;
-        p(1, nodes) .* p(2, nodes);
-        p(2, nodes).^2];
-    IPS = [1; xpi; xpi(1)^2; xpi(1) * xpi(2); xpi(2)^2];
-    
-    PhiIPS = P \ IPS;
-    
-   velocity(i,1) = Unodes1(:,i)' * PhiIPS;
-   velocity(i,2) = Unodes2(:,i)' * PhiIPS;
-end
+% for i = 1:numPart
+%     nodes = particleNodes{i};
+%     xpi = xp(:,i);
+%     P = [ones(1, 6);
+%         p(:, nodes);
+%         p(1, nodes).^2;
+%         p(1, nodes) .* p(2, nodes);
+%         p(2, nodes).^2];
+%     IPS = [1; xpi; xpi(1)^2; xpi(1) * xpi(2); xpi(2)^2];
+%     
+%     PhiIPS = P \ IPS;
+%     
+%    velocity(i,1) = Unodes1(:,i)' * PhiIPS;
+%    velocity(i,2) = Unodes2(:,i)' * PhiIPS;
+% end
