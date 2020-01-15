@@ -1,8 +1,3 @@
-%test case for oseenSolver with gaussian approximation of delta function
-% fd=@(p) drectangle(p,0,4,0,1);
-% [p,t]=distmesh2d(fd,@huniform,0.02229,[0, 0;4, 1],[0  0; 0  1;  4  1;  4   0]);
-% initialLength epsilon number of modes
-%paramSet = {[0.01   0.01  512]  [0.0141   0.01  256]   [0.028   0.01  512]    [0.0141   0.01  512]};
 paramSet = {[0.014   0.01  200]   [0.02  0.014  150]};
 %paramSet = {[0.005   0.002  1500] };
 [X,Y] =  meshgrid(-.4:0.05:0);
@@ -35,5 +30,5 @@ velocities(i,:,:) = (2*pi)^0.5*maxWaveNum/L*u*2;
 toc
 end
 % 
- figure
+figure
 quiver(X',Y',velocities(1,:,1),velocities(1,:,2))
