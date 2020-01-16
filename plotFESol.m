@@ -5,7 +5,7 @@ end
 if size(U,1)~=length(U)
 U=U';
 end
-%figure
+figure
 set(gca, 'Projection', 'perspective')
 caxis([-1 1])
 daspect([1 1 2])
