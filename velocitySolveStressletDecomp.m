@@ -1,12 +1,13 @@
-function [velocity,p,t] = velocitySolveExperimental(p,t,epsilon,waveNumbers,xp)
+function [velocity,pOld,tOld] = velocitySolveStressletDecomp(p,t,epsilon,waveNumbers,xp,bgFlow)
 %% Calculate stuff used in all solves.
 maxWaveNum=length(waveNumbers);
 numPart = size(xp, 2);
 b=boundedges(p,t);
 Dirichlet_e=b;
 p=p';
-fb = @(x, k) [0*x(:,2), 0*x(:,1), 0*x(:,1)+0*k];
 
+pOld = p;
+tOld = t;
 
 % Quadratic elements contain six nodes per triangle: add three nodes at the middle of the edges of each triangle
 numberOfNodes.old = size(p, 2);
@@ -52,10 +53,12 @@ Dirichlet=unique(Dirichlet);
 us = zeros(numPart,1);
 gammax = zeros(1, numPart);
 gammay = zeros(1, numPart,1);
-bgFlow = (1-4*(0.5-p(2, :)).^2);
+%bgFlow = 75*(1-4*(0.5-p(2, :)).^2);
 %bgFlow = (1-(p(1, :)).^2-(p(2, :)).^2);
 %bgFlow = 1*((0.5-p(2,:).^2)+(1-p(1, :)).^2);
 particleNodes = cell(numPart,1);
+uMax = max(bgFlow);
+bgFlow = bgFlow/uMax;
 for part =1:numPart
     xpi = xp(:, part);
     xpn = whatTriangleIsThisPointIn(p,t,xpi);
@@ -298,7 +301,7 @@ K(Dirichlet, Dirichlet) = -eye(numel(Dirichlet));
 
 %% Do individual solves for particles
 
-velocity = zeros(numberOfNodes.new,numPart, 2);
+velocity = zeros(numPart, 2);
 %AwnPool = parallel.pool.Constant(@() Awn);
 % T = parallel.pool.Constant(T);
 % K = parallel.pool.Constant(K);
@@ -323,10 +326,9 @@ velocity = zeros(numberOfNodes.new,numPart, 2);
 % Awn = @(waveNum, us) [-momentumEQNs(waveNum, us), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 
 
-UhatNodes1 = zeros(numberOfNodes.new, maxWaveNum, numPart);
-UhatNodes2 = zeros(numberOfNodes.new, maxWaveNum, numPart);
-UhatNodes3 = zeros(numberOfNodes.new, maxWaveNum, numPart);
-UhatNodesp = zeros(numberOfNodes.old, maxWaveNum, numPart);
+UhatNodes1 = zeros(6, maxWaveNum, numPart);
+UhatNodes2 = zeros(6, maxWaveNum, numPart);
+UhatNodes3 = zeros(6, maxWaveNum, numPart);
 
 Btot = @(waveNum) Bs + 1i*waveNum*B3s;
 % momentumEQNs = @(waveNum, us) [K + (waveNum.^2 + 1i*waveNum*us)*M - 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
@@ -341,22 +343,25 @@ Visc = @(waveNum) K + waveNum.^2*M;
 Fhat = @(waveNum) blkdiag(-Visc(waveNum), -Visc(waveNum), -Visc(waveNum));
 
 AwnBase = @(waveNum) [-momentumEQNs(waveNum), -Btot(waveNum); -Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
-parfor waveIndex = 1:maxWaveNum
+uStressF = cell(numPart);
+for i = 1:numPart
+uStressF{i} = regStressletF(p',xp(:,i),gammax(i),gammay(i),epsilon, 2*maxWaveNum+2);
+uStressF{i} = uStressF{i}(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/4*2);
+end
+RHSop = @(waveNum) [-1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new*2);
+                    sparse(numberOfNodes.new,numberOfNodes.new), -1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);
+                    S1, S2 , -1i*waveNum*T];
+                
+RHSpartspecific = @(waveNum,i) [+1i*waveNum*us(i)*M, sparse(numberOfNodes.new,numberOfNodes.new*2);
+                    sparse(numberOfNodes.new,numberOfNodes.new), 1i*waveNum*us(i)*M, sparse(numberOfNodes.new,numberOfNodes.new);
+                    sparse(numberOfNodes.new, 2*numberOfNodes.new) , 1i*waveNum*us(i)*M];
+
+for waveIndex = 1:maxWaveNum
     
     
-    Fb=zeros(length(Dirichlet)*numPart,1);
-    for i=1:numPart
-        %this part is dumb but doesn't effect anything because it's all
-        %zeros. I keep it because it might be useful if I want to implement
-        %non zero boundary conditions.
-        waveNum=waveNumbers(i);
-        Fb((1:3*length(Dirichlet))+(i-1)*3*length(Dirichlet))=reshape(fb(p(:,Dirichlet)',waveNum),3*length(Dirichlet),1);
-    end
-    
-    %     Awns=cell(1,length(waveNumbers));
-    %     for i=1:length(waveNumbers)
-    %         Awns(i) = {Awn(waveNumbers(i))};
-    %     end
+    %Fb=zeros(length(Dirichlet)*numPart,1);
+
+        %Fb((1:3*length(Dirichlet))+(i-1)*3*length(Dirichlet))=reshape(fb(p(:,Dirichlet)',waveNum),3*length(Dirichlet),1);
     %rank one update to increase rank
     u = [zeros(3*numberOfNodes.new,1); ones(numberOfNodes.old,1)];
     u = sparse(u);
@@ -378,34 +383,35 @@ parfor waveIndex = 1:maxWaveNum
     [FhatL, FhatU,FhatP,FhatQ] = lu(Fhat(waveNumbers(waveIndex)));
     schurCompi = 100*mean(mean(abs(Bs)))*eq(waveIndex,1)*ones(numberOfNodes.old)+Mp;
     [schurL, schurU] = lu(schurCompi);
-    tol = 10^(-6);
+    tol = 10^(-4);
     maxit = 30;
-    buttshit = zeros(numberOfNodes.new, 3, numPart); %you need to create this because of how matlab does slicing
-    pButtshit = zeros(numberOfNodes.old, numPart);
+    buttshit = zeros(6, 3, numPart); %you need to create this because of how matlab does slicing
     F = RHS(waveNumbers(waveIndex));
     ABase = AwnBase(waveNumbers(waveIndex));
     A=ABase;
     A(Dirichlet123, :) = 0;
+    %RHSbase = RHSop(waveNumbers(waveIndex));
     for i = 1:numPart
         A(1:a1/3,1:a1/3) = ABase(1:a1/3,1:a1/3)-1i*waveNumbers(waveIndex)*us(i)*M;
         A((a1/3+1):(2*a1/3),(a1/3+1):(2*a1/3)) = A(1:a1/3,1:a1/3);
         A((2*a1/3+1):(a1),(2*a1/3+1):(a1)) = A(1:a1/3,1:a1/3);
+         F(:,i) = [RHSop(waveNumbers(waveIndex))*uStressF{i}(:,waveIndex)+RHSpartspecific(waveNumbers(waveIndex),i)*uStressF{i}(:,waveIndex);
+                   sparse(numberOfNodes.old,1)]; 
+         F(Dirichlet123, i) = -uStressF{i}(Dirichlet123,waveIndex);
         %A(Dirichlet123, :) = 0;
         %A(Dirichlet123, Dirichlet123) = eye(numel(Dirichlet123));
         if waveIndex == 1
-            A = A+100*mean(mean(abs(Bs)))*(u*u');
+            A = A + 100*mean(mean(abs(Bs)))*(u*u');
         end
      Uhat = gmres(A, F(:, i),15, tol,maxit, @(x) PCbackSolve(x,A(1:a1, (a1+1):end),FhatL,FhatU, FhatP, FhatQ, schurL, schurU, a1));
     
-        buttshit(:,1, i) = Uhat(1:numberOfNodes.new);
-        buttshit(:,2, i) = Uhat((1:numberOfNodes.new) + numberOfNodes.new);
-        buttshit(:,3, i) = Uhat((1:numberOfNodes.new) + 2*numberOfNodes.new);
-        pButtshit(:,i) = Uhat((1:numberOfNodes.old) + 3*numberOfNodes.new);
+        buttshit(:,1, i) = Uhat(particleNodes{i});
+        buttshit(:,2, i) = Uhat(particleNodes{i} + numberOfNodes.new);
+        buttshit(:,3, i) = Uhat(particleNodes{i} + 2*numberOfNodes.new);
     end
     UhatNodes1(:, waveIndex, :) = buttshit(:, 1, :);
     UhatNodes2(:, waveIndex, :) = buttshit(:, 2, :);
     UhatNodes3(:, waveIndex, :) = buttshit(:, 3, :);
-    UhatNodesp(:, waveIndex, :) = pButtshit(:,:);
     
     %     Uwn=cell(maxWaveNum, 4); % (waveNumbers, u1 u2 u3  p)
     %     for i=1:maxWaveNum
@@ -421,21 +427,20 @@ end
 
 % Unodes1 = ifft(UhatNodes1, maxWaveNum, 2);
 % Unodes2 = ifft(UhatNodes2, maxWaveNum, 2);
-velocity(:,:,1) = sum(real(UhatNodes1), 2)/maxWaveNum;
-velocity(:,:,2) = sum(real(UhatNodes2), 2)/maxWaveNum;
-%velocity = UhatNodes2(1,:,:);
-% for i = 1:numPart
-%     nodes = particleNodes{i};
-%     xpi = xp(:,i);
-%     P = [ones(1, 6);
-%         p(:, nodes);
-%         p(1, nodes).^2;
-%         p(1, nodes) .* p(2, nodes);
-%         p(2, nodes).^2];
-%     IPS = [1; xpi; xpi(1)^2; xpi(1) * xpi(2); xpi(2)^2];
-%     
-%     PhiIPS = P \ IPS;
-%     
-%    velocity(i,1) = Unodes1(:,i)' * PhiIPS;
-%    velocity(i,2) = Unodes2(:,i)' * PhiIPS;
-% end
+Unodes1 = sum(real(UhatNodes1), 2)/maxWaveNum;
+Unodes2 = sum(real(UhatNodes2), 2)/maxWaveNum;
+for i = 1:numPart
+    nodes = particleNodes{i};
+    xpi = xp(:,i);
+    P = [ones(1, 6);
+        p(:, nodes);
+        p(1, nodes).^2;
+        p(1, nodes) .* p(2, nodes);
+        p(2, nodes).^2];
+    IPS = [1; xpi; xpi(1)^2; xpi(1) * xpi(2); xpi(2)^2];
+    
+    PhiIPS = P \ IPS;
+    
+   velocity(i,1) = Unodes1(:,i)' * PhiIPS;
+   velocity(i,2) = Unodes2(:,i)' * PhiIPS;
+end
