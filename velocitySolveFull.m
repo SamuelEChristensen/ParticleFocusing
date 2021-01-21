@@ -84,6 +84,9 @@ for part =1:numPart
     gammax(part) = bgFlowIPS * PhiDxIPS;
     gammay(part) = bgFlowIPS * PhiDyIPS;
 end
+gammax = gammax;
+gammay = gammay;
+
 ubar = bgFlow;
 
 N = @(x,xpf) epsilon/((epsilon^2*pi*2)^1.5)*exp(-1/2*(((x(:,1)-xpf(1,:)).^2+(x(:,2)-xpf(2,:)).^2)/epsilon^2));

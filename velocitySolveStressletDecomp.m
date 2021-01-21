@@ -1,4 +1,4 @@
-function [velocity,pOld,tOld] = velocitySolveStressletDecomp(p,t,epsilon,waveNumbers,xp,bgFlow)
+function [velocity,p,t] = velocitySolveStressletDecomp(p,t,epsilon,waveNumbers,xp,bgFlow,L)
 %% Calculate stuff used in all solves.
 maxWaveNum=length(waveNumbers);
 numPart = size(xp, 2);
@@ -58,7 +58,8 @@ gammay = zeros(1, numPart,1);
 %bgFlow = 1*((0.5-p(2,:).^2)+(1-p(1, :)).^2);
 particleNodes = cell(numPart,1);
 uMax = max(bgFlow);
-bgFlow = bgFlow/uMax;
+Re = 1;
+bgFlow = Re * bgFlow/uMax;
 for part =1:numPart
     xpi = xp(:, part);
     xpn = whatTriangleIsThisPointIn(p,t,xpi);
@@ -80,10 +81,10 @@ for part =1:numPart
     
     bgFlowIPS = bgFlow(nodes);
     us(part) = bgFlowIPS * PhiIPS;
-    gammax(part) = bgFlowIPS * PhiDxIPS;
-    gammay(part) = bgFlowIPS * PhiDyIPS;
+    gammax(part) = bgFlowIPS * PhiDxIPS/Re;
+    gammay(part) = bgFlowIPS * PhiDyIPS/Re;
 end
-ubar = bgFlow;
+ubar =  bgFlow;
 
 N = @(x,xpf) epsilon/((epsilon^2*pi*2)^1.5)*exp(-1/2*(((x(:,1)-xpf(1,:)).^2+(x(:,2)-xpf(2,:)).^2)/epsilon^2));
 Nk = @(k) exp(-epsilon^2/2*k.^2);
@@ -252,33 +253,33 @@ for e = 1:numberOfElements
     
     
     %RHS
-     % right hand side
-        nodes123 = [nodes, nodes+numberOfNodes.new, nodes+2*numberOfNodes.new];
-        
-        %linearize with respect to multiple xp
-        PhiIPS = P \ IPS;
-%         Fe = wOmega(1) * PhiIPS(:, 1) * f(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
-%             wOmega(2) * PhiIPS(:, 2) * f(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
-%             wOmega(3) * PhiIPS(:, 3) * f(ip(3, :), xp, gammax, gammay) * areaOfElement;
-%         
-%         F0(nodes123, :) = F0(nodes123, :) + [Fe(:,1:end/3); Fe(:,(1:end/3) + end/3); Fe(:,(1:end/3) + 2*end/3)];
-%         
-        
-        F1e = wOmega(1) * PhiIPS(:, 1) * f1(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
-            wOmega(2) * PhiIPS(:, 2) * f1(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
-            wOmega(3) * PhiIPS(:, 3) * f1(ip(3, :), xp, gammax, gammay) * areaOfElement;
-        
-        F2e = wOmega(1) * PhiDxIPS(:, 1) * f1(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
-            wOmega(2) * PhiDxIPS(:, 2) * f1(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
-            wOmega(3) * PhiDxIPS(:, 3) * f1(ip(3, :), xp, gammax, gammay) * areaOfElement;
-        
-        F3e = wOmega(1) * PhiDyIPS(:, 1) * f1(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
-            wOmega(2) * PhiDyIPS(:, 2) * f1(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
-            wOmega(3) * PhiDyIPS(:, 3) * f1(ip(3, :), xp, gammax, gammay) * areaOfElement;
-        
-        F01(nodes, :) = F01(nodes, :) + F1e;
-        F02(nodes, :) = F02(nodes, :) + F2e;
-        F03(nodes, :) = F03(nodes, :) + F3e;
+    % right hand side
+    nodes123 = [nodes, nodes+numberOfNodes.new, nodes+2*numberOfNodes.new];
+    
+    %linearize with respect to multiple xp
+    PhiIPS = P \ IPS;
+    %         Fe = wOmega(1) * PhiIPS(:, 1) * f(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
+    %             wOmega(2) * PhiIPS(:, 2) * f(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
+    %             wOmega(3) * PhiIPS(:, 3) * f(ip(3, :), xp, gammax, gammay) * areaOfElement;
+    %
+    %         F0(nodes123, :) = F0(nodes123, :) + [Fe(:,1:end/3); Fe(:,(1:end/3) + end/3); Fe(:,(1:end/3) + 2*end/3)];
+    %
+    
+    F1e = wOmega(1) * PhiIPS(:, 1) * f1(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
+        wOmega(2) * PhiIPS(:, 2) * f1(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
+        wOmega(3) * PhiIPS(:, 3) * f1(ip(3, :), xp, gammax, gammay) * areaOfElement;
+    
+    F2e = wOmega(1) * PhiDxIPS(:, 1) * f1(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
+        wOmega(2) * PhiDxIPS(:, 2) * f1(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
+        wOmega(3) * PhiDxIPS(:, 3) * f1(ip(3, :), xp, gammax, gammay) * areaOfElement;
+    
+    F3e = wOmega(1) * PhiDyIPS(:, 1) * f1(ip(1, :), xp, gammax, gammay ) * areaOfElement + ...
+        wOmega(2) * PhiDyIPS(:, 2) * f1(ip(2, :), xp, gammax, gammay) * areaOfElement + ...
+        wOmega(3) * PhiDyIPS(:, 3) * f1(ip(3, :), xp, gammax, gammay) * areaOfElement;
+    
+    F01(nodes, :) = F01(nodes, :) + F1e;
+    F02(nodes, :) = F02(nodes, :) + F2e;
+    F03(nodes, :) = F03(nodes, :) + F3e;
 end
 
 RHS = @(k) -10*pi/3*[-1i*k*F01*diag(gammax); -1i*k*F01*diag(gammay); -(F02*diag(gammax)+F03*diag(gammay)); sparse(numberOfNodes.old, numPart)];
@@ -300,8 +301,8 @@ K(Dirichlet, Dirichlet) = -eye(numel(Dirichlet));
 
 
 %% Do individual solves for particles
-
-velocity = zeros(numPart, 2);
+velocity = zeros(numberOfNodes.new,numPart, 2);
+ %velocity = zeros(numPart, 2);
 %AwnPool = parallel.pool.Constant(@() Awn);
 % T = parallel.pool.Constant(T);
 % K = parallel.pool.Constant(K);
@@ -310,11 +311,11 @@ velocity = zeros(numPart, 2);
 % S2 = parallel.pool.Constant(S2);
 % Bs = parallel.pool.Constant(Bs);
 % B3s = parallel.pool.Constant(B3s);
-% 
+%
 % UhatNodes1 = zeros(6, maxWaveNum, numPart);
 % UhatNodes2 = zeros(6, maxWaveNum, numPart);
-% 
-% 
+%
+%
 % Btot = @(waveNum) Bs.Value + 1i*waveNum*B3s.Value;
 % momentumEQNs = @(waveNum, us) [K.Value + (waveNum.^2-1i*waveNum*us)*M.Value + 1i*waveNum*T.Value, sparse(numberOfNodes.new, 2*numberOfNodes.new);
 %     sparse(numberOfNodes.new,numberOfNodes.new), K.Value + (waveNum.^2-1i*waveNum*us)*M.Value + 1i*waveNum*T.Value, sparse(numberOfNodes.new,numberOfNodes.new);
@@ -322,13 +323,17 @@ velocity = zeros(numPart, 2);
 % % Create Preconditioner
 % Visc = @(waveNum) K.Value + waveNum.^2*M.Value;
 % Fhat = @(waveNum) blkdiag(-Visc(waveNum), -Visc(waveNum), -Visc(waveNum));
-% 
+%
 % Awn = @(waveNum, us) [-momentumEQNs(waveNum, us), Btot(waveNum); Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
+% UhatNodes1 = zeros(6, maxWaveNum, numPart);
+% UhatNodes2 = zeros(6, maxWaveNum, numPart);
+UhatNodes3 = zeros(numberOfNodes.new, maxWaveNum, numPart);
+UhatNodesp = zeros(numberOfNodes.old, maxWaveNum, numPart);
 
-
-UhatNodes1 = zeros(6, maxWaveNum, numPart);
-UhatNodes2 = zeros(6, maxWaveNum, numPart);
-UhatNodes3 = zeros(6, maxWaveNum, numPart);
+%
+UhatNodes1 = zeros(numberOfNodes.new, maxWaveNum, numPart);
+UhatNodes2 = zeros(numberOfNodes.new, maxWaveNum, numPart);
+% UhatNodes3 = zeros(6, maxWaveNum, numPart);
 
 Btot = @(waveNum) Bs + 1i*waveNum*B3s;
 % momentumEQNs = @(waveNum, us) [K + (waveNum.^2 + 1i*waveNum*us)*M - 1i*waveNum*T, sparse(numberOfNodes.new, 2*numberOfNodes.new);
@@ -345,23 +350,23 @@ Fhat = @(waveNum) blkdiag(-Visc(waveNum), -Visc(waveNum), -Visc(waveNum));
 AwnBase = @(waveNum) [-momentumEQNs(waveNum), -Btot(waveNum); -Btot(waveNum)', sparse(numberOfNodes.old,numberOfNodes.old)];
 uStressF = cell(numPart);
 for i = 1:numPart
-uStressF{i} = regStressletF(p',xp(:,i),gammax(i),gammay(i),epsilon, 2*maxWaveNum+2);
-uStressF{i} = uStressF{i}(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/4*2);
+    uStressF{i} = regStressletF(p',xp(:,i),gammax(i),gammay(i),epsilon, 2*maxWaveNum*8, L);
+    uStressF{i} = uStressF{i}(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/L*2*8);
 end
 RHSop = @(waveNum) [-1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new*2);
-                    sparse(numberOfNodes.new,numberOfNodes.new), -1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);
-                    S1, S2 , -1i*waveNum*T];
-                
-RHSpartspecific = @(waveNum,i) [+1i*waveNum*us(i)*M, sparse(numberOfNodes.new,numberOfNodes.new*2);
-                    sparse(numberOfNodes.new,numberOfNodes.new), 1i*waveNum*us(i)*M, sparse(numberOfNodes.new,numberOfNodes.new);
-                    sparse(numberOfNodes.new, 2*numberOfNodes.new) , 1i*waveNum*us(i)*M];
+    sparse(numberOfNodes.new,numberOfNodes.new), -1i*waveNum*T, sparse(numberOfNodes.new,numberOfNodes.new);
+    S1, S2 , -1i*waveNum*T];
 
-for waveIndex = 1:maxWaveNum
+RHSpartspecific = @(waveNum,i) [+1i*waveNum*us(i)*M, sparse(numberOfNodes.new,numberOfNodes.new*2);
+    sparse(numberOfNodes.new,numberOfNodes.new), 1i*waveNum*us(i)*M, sparse(numberOfNodes.new,numberOfNodes.new);
+    sparse(numberOfNodes.new, 2*numberOfNodes.new) , 1i*waveNum*us(i)*M];
+
+parfor waveIndex = 1:maxWaveNum
     
     
     %Fb=zeros(length(Dirichlet)*numPart,1);
-
-        %Fb((1:3*length(Dirichlet))+(i-1)*3*length(Dirichlet))=reshape(fb(p(:,Dirichlet)',waveNum),3*length(Dirichlet),1);
+    
+    %Fb((1:3*length(Dirichlet))+(i-1)*3*length(Dirichlet))=reshape(fb(p(:,Dirichlet)',waveNum),3*length(Dirichlet),1);
     %rank one update to increase rank
     u = [zeros(3*numberOfNodes.new,1); ones(numberOfNodes.old,1)];
     u = sparse(u);
@@ -385,7 +390,8 @@ for waveIndex = 1:maxWaveNum
     [schurL, schurU] = lu(schurCompi);
     tol = 10^(-4);
     maxit = 30;
-    buttshit = zeros(6, 3, numPart); %you need to create this because of how matlab does slicing
+    buttshit = zeros(numberOfNodes.new, 3, numPart); %you need to create this because of how matlab does slicing
+    %buttshit = zeros(6, 3, numPart);
     F = RHS(waveNumbers(waveIndex));
     ABase = AwnBase(waveNumbers(waveIndex));
     A=ABase;
@@ -395,52 +401,59 @@ for waveIndex = 1:maxWaveNum
         A(1:a1/3,1:a1/3) = ABase(1:a1/3,1:a1/3)-1i*waveNumbers(waveIndex)*us(i)*M;
         A((a1/3+1):(2*a1/3),(a1/3+1):(2*a1/3)) = A(1:a1/3,1:a1/3);
         A((2*a1/3+1):(a1),(2*a1/3+1):(a1)) = A(1:a1/3,1:a1/3);
-         F(:,i) = [RHSop(waveNumbers(waveIndex))*uStressF{i}(:,waveIndex)+RHSpartspecific(waveNumbers(waveIndex),i)*uStressF{i}(:,waveIndex);
-                   sparse(numberOfNodes.old,1)]; 
-         F(Dirichlet123, i) = -uStressF{i}(Dirichlet123,waveIndex);
+        F(:,i) = [RHSop(waveNumbers(waveIndex))*uStressF{i}(:,waveIndex)+RHSpartspecific(waveNumbers(waveIndex),i)*uStressF{i}(:,waveIndex);
+            sparse(numberOfNodes.old,1)];
+        F(Dirichlet123, i) = -uStressF{i}(Dirichlet123,waveIndex);
         %A(Dirichlet123, :) = 0;
         %A(Dirichlet123, Dirichlet123) = eye(numel(Dirichlet123));
         if waveIndex == 1
             A = A + 100*mean(mean(abs(Bs)))*(u*u');
         end
-     Uhat = gmres(A, F(:, i),15, tol,maxit, @(x) PCbackSolve(x,A(1:a1, (a1+1):end),FhatL,FhatU, FhatP, FhatQ, schurL, schurU, a1));
-    
-        buttshit(:,1, i) = Uhat(particleNodes{i});
-        buttshit(:,2, i) = Uhat(particleNodes{i} + numberOfNodes.new);
-        buttshit(:,3, i) = Uhat(particleNodes{i} + 2*numberOfNodes.new);
+        Uhat = gmres(A, F(:, i),15, tol,maxit, @(x) PCbackSolve(x,A(1:a1, (a1+1):end),FhatL,FhatU, FhatP, FhatQ, schurL, schurU, a1));
+     
+        % pButtshit(:,i) = Uhat((1:numberOfNodes.old) + 3*numberOfNodes.new);
+             buttshit(:,1, i) = Uhat(1:numberOfNodes.new);
+                buttshit(:,2, i) = Uhat((1:numberOfNodes.new) + numberOfNodes.new);
+                buttshit(:,3, i) = Uhat((1:numberOfNodes.new) + 2*numberOfNodes.new);
+               % pButtshit(:,i) = Uhat((1:numberOfNodes.old) + 3*numberOfNodes.new);
+        %     end
+        %     UhatNodes1(:, waveIndex, :) = buttshit(:, 1, :);
+        %     UhatNodes2(:, waveIndex, :) = buttshit(:, 2, :);
+        %     UhatNodes3(:, waveIndex, :) = buttshit(:, 3, :);
+        %UhatNodesp(:, waveIndex, :) = pButtshit(:,:);
+%                 buttshit(:,1, i) = Uhat(particleNodes{i});
+%                 buttshit(:,2, i) = Uhat(particleNodes{i} + numberOfNodes.new);
+%                 buttshit(:,3, i) = Uhat(particleNodes{i} + 2*numberOfNodes.new);
     end
     UhatNodes1(:, waveIndex, :) = buttshit(:, 1, :);
     UhatNodes2(:, waveIndex, :) = buttshit(:, 2, :);
-    UhatNodes3(:, waveIndex, :) = buttshit(:, 3, :);
+    %UhatNodes3(:, waveIndex, :) = buttshit(:, 3, :);
     
-    %     Uwn=cell(maxWaveNum, 4); % (waveNumbers, u1 u2 u3  p)
-    %     for i=1:maxWaveNum
-    %         Uwn{i,1} = U{i}((1:numberOfNodes.new));
-    %         Uwn{i,2} = U{i}((1:numberOfNodes.new)+numberOfNodes.new);
-    %         Uwn{i,3} = U{i}((1:numberOfNodes.new)+2*numberOfNodes.new);
-    %         Uwn{i,4} = U{i}((1:numberOfNodes.old)+3*numberOfNodes.new);
-    %     end
-
+    
 end
 
 %inverse fourier transform and evaluate velocity
 
-% Unodes1 = ifft(UhatNodes1, maxWaveNum, 2);
-% Unodes2 = ifft(UhatNodes2, maxWaveNum, 2);
-Unodes1 = sum(real(UhatNodes1), 2)/maxWaveNum;
-Unodes2 = sum(real(UhatNodes2), 2)/maxWaveNum;
-for i = 1:numPart
-    nodes = particleNodes{i};
-    xpi = xp(:,i);
-    P = [ones(1, 6);
-        p(:, nodes);
-        p(1, nodes).^2;
-        p(1, nodes) .* p(2, nodes);
-        p(2, nodes).^2];
-    IPS = [1; xpi; xpi(1)^2; xpi(1) * xpi(2); xpi(2)^2];
-    
-    PhiIPS = P \ IPS;
-    
-   velocity(i,1) = Unodes1(:,i)' * PhiIPS;
-   velocity(i,2) = Unodes2(:,i)' * PhiIPS;
-end
+Unodes1 = ifft(UhatNodes1, maxWaveNum, 2);
+Unodes2 = ifft(UhatNodes2, maxWaveNum, 2);
+velocity(:,:,1) = sum(real(UhatNodes1), 2)/maxWaveNum;
+velocity(:,:,2) = sum(real(UhatNodes2), 2)/maxWaveNum;
+% just delete 4 lines above then uncomment all below also change size of
+% velocity line 302
+% Unodes1 = sum(real(UhatNodes1), 2)/maxWaveNum;
+% Unodes2 = sum(real(UhatNodes2), 2)/maxWaveNum;
+% for i = 1:numPart
+%     nodes = particleNodes{i};
+%     xpi = xp(:,i);
+%     P = [ones(1, 6);
+%         p(:, nodes);
+%         p(1, nodes).^2;
+%         p(1, nodes) .* p(2, nodes);
+%         p(2, nodes).^2];
+%     IPS = [1; xpi; xpi(1)^2; xpi(1) * xpi(2); xpi(2)^2];
+%     
+%     PhiIPS = P \ IPS;
+%     
+%     velocity(i,1) = Unodes1(:,i)' * PhiIPS;
+%     velocity(i,2) = Unodes2(:,i)' * PhiIPS;
+% end

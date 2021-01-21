@@ -2,7 +2,7 @@
 % fd=@(p) drectangle(p,0,4,0,1);
 % [p,t]=distmesh2d(fd,@huniform,0.02229,[0, 0;4, 1],[0  0; 0  1;  4  1;  4   0]);
 % initialLength epsilon number of modes
-paramSet = {[0.03   0.04  150]  [0.03   0.03  150]   [0.02   0.02  150]  [0.01   0.015  180] [0.01   0.01  180]    [0.0075   0.005  180]};
+paramSet = {[0.01   0.005  360]};
 %paramSet = {[0.01   0.005  178]};
 %paramSet = {[0.005   0.002  1500] };
 xp = [2*ones(size(0.1:0.05:0.45)); 0.1:0.05:0.45];
@@ -20,26 +20,32 @@ L = 4;
 %waveNumbers = -2*pi*[0:maxWaveNum/2, -(maxWaveNum/2-1):-1]/L;
 waveNumbers = -2*pi*(0:(maxWaveNum-1))/L;
 tic
-[u,pold,told]=velocitySolveExperimental(p,t, parami(2), waveNumbers, xp);
+sol=@(x) zeros(size(x(:,1)));
+f=@(x) -ones(size(x(:,1)));
+
+
+fb=@(p) sol(p);
+[bgFlow,~,~] = poissonSolver(p,t,f,fb);
+[u,pold,told]=velocitySolveFull(p,t, parami(2), waveNumbers, xp, bgFlow');
 velocities(i,:,:) = (2*pi)^0.5*maxWaveNum/L*u*2;
 toc
 end
 % 
- X = readmatrix('hinchComsol');
- Y = readmatrix('hinchData');
-
-
-figure
-hold on
-plot(xp(2,:), real(velocities(:,:,2)))
-plot(X(:,1),X(:,2))
-plot(Y(:,1),Y(:,2))
+ X = xlsread('hinchComsol');
+ Y = xlsread('hinchData');
 
 % 
-% X = readmatrix('hinchComsol_75');
-% Y = readmatrix('hinchData_75');
 % figure
 % hold on
-% plot(xp(2,:), real(velocities(:,:,2))/75)
-% plot(X(:,1),X(:,6))
-%  plot(Y(:,1),Y(:,2))
+% plot(xp(2,:), real(velocities(:,:,2)))
+% plot(X(:,1),X(:,2))
+% plot(Y(:,1),Y(:,2))
+
+
+X = xlsread('hinchComsol_75');
+Y = xlsread('hinchData_75');
+figure
+hold on
+plot(xp(2,:), real(velocities(:,:,2))/75)
+plot(X(:,1),X(:,6))
+ plot(Y(:,1),Y(:,2))
