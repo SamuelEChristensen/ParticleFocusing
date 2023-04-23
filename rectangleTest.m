@@ -1,5 +1,5 @@
 
-paramSet = {[0.03   0.00085  250]};
+paramSet = {[0.025   0.00085  250]};
 %  smallest grid size epsilon  max wavenumber (just keep it at like 150)
  
    parami = paramSet{1};

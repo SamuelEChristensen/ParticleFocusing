@@ -33,7 +33,7 @@ for i = 1:length(paramSet)
     
     fb=@(p) sol(p);
     [bgFlow,~,~] = poissonSolver(p,t,f,fb);
-    [u,pold,told] = velocitySolveDiscDecomp(p,t, parami(2), waveNumbers, xp, bgFlow',L,1,2,75);
+    [u,pold,told] = velocitySolveDiscDecomp(p,t, parami(2), waveNumbers, xp, bgFlow',L,1,2,1);
     velocities(i,:,:) = (2*pi)^0.5*maxWaveNum/L*u*2;
     toc
 end

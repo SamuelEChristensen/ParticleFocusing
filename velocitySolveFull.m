@@ -59,7 +59,8 @@ gammay = zeros(1, numPart,1);
 %bgFlow = 1*((0.5-p(2,:).^2)+(1-p(1, :)).^2);
 particleNodes = cell(numPart,1);
 uMax = max(bgFlow);
-bgFlow = bgFlow/uMax;
+Re=50;
+bgFlow = Re*bgFlow/uMax;
 for part =1:numPart
     xpi = xp(:, part);
     xpn = whatTriangleIsThisPointIn(p,t,xpi);
@@ -81,8 +82,8 @@ for part =1:numPart
     
     bgFlowIPS = bgFlow(nodes);
     us(part) = bgFlowIPS * PhiIPS;
-    gammax(part) = bgFlowIPS * PhiDxIPS;
-    gammay(part) = bgFlowIPS * PhiDyIPS;
+    gammax(part) = bgFlowIPS * PhiDxIPS/Re;
+    gammay(part) = bgFlowIPS * PhiDyIPS/Re;
 end
 gammax = gammax;
 gammay = gammay;
@@ -350,14 +351,7 @@ AwnBase = @(waveNum) [-momentumEQNs(waveNum), -Btot(waveNum); -Btot(waveNum)', s
 parfor waveIndex = 1:maxWaveNum
     
     
-    Fb=zeros(length(Dirichlet)*numPart,1);
-    for i=1:numPart
-        %this part is dumb but doesn't effect anything because it's all
-        %zeros. I keep it because it might be useful if I want to implement
-        %non zero boundary conditions.
-        waveNum=waveNumbers(i);
-        Fb((1:3*length(Dirichlet))+(i-1)*3*length(Dirichlet))=reshape(fb(p(:,Dirichlet)',waveNum),3*length(Dirichlet),1);
-    end
+  
     
     %     Awns=cell(1,length(waveNumbers));
     %     for i=1:length(waveNumbers)
@@ -395,8 +389,8 @@ parfor waveIndex = 1:maxWaveNum
         A(1:a1/3,1:a1/3) = ABase(1:a1/3,1:a1/3)-1i*waveNumbers(waveIndex)*us(i)*M;
         A((a1/3+1):(2*a1/3),(a1/3+1):(2*a1/3)) = A(1:a1/3,1:a1/3);
         A((2*a1/3+1):(a1),(2*a1/3+1):(a1)) = A(1:a1/3,1:a1/3);
-        %A(Dirichlet123, :) = 0;
-        %A(Dirichlet123, Dirichlet123) = eye(numel(Dirichlet123));
+        A(Dirichlet123, :) = 0;
+        A(Dirichlet123, Dirichlet123) = eye(numel(Dirichlet123));
         if waveIndex == 1
             A = A+100*mean(mean(abs(Bs)))*(u*u');
         end

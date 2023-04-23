@@ -11,7 +11,7 @@ tOld = t;
 % Quadratic elements contain six nodes per triangle: add three nodes at the middle of the edges of each triangle
 numberOfNodes.old = size(p, 2);
 numberOfElements = size(t, 1);
-S = sparse(numberOfNodes.old, numberOfNodes.old);
+S = zeros(numberOfNodes.old, numberOfNodes.old);%sparse(numberOfNodes.old, numberOfNodes.old);
 counter = numberOfNodes.old + 1;
 for e = 1:numberOfElements
     nodes = t(e, :);
@@ -45,7 +45,7 @@ for i=1 : length(Dirichlet_e)
     Dirichlet = [Dirichlet; [nodes(1), S(nodes(1), nodes(2)), nodes(2)]];
 end
 Dirichlet=unique(Dirichlet);
-
+clear S
 % creat f for each particle
 % Frame things in terms of xp
 us = zeros(numPart,1);
@@ -410,11 +410,11 @@ tic
 for i = 1:numPart
     
     
-    slicerStress = regStressletF(p',xp(:,i),gammax(i),gammay(i),epsilon, 5*maxWaveNum,L);
+    slicerStress = regStressletF(p',xp(:,i),gammax(i),gammay(i),epsilon, 16*maxWaveNum,L);
     %uStressF{i} = slicerStress(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/L*10);
-    uStressF(i,:,:) = slicerStress(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/L*5);
-    slicerDisc = uDiscF(p', xp(1,i), xp(2,i), gammax(i), gammay(i), 5*maxWaveNum,L);
-    discF(i,:,:) = slicerDisc(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/L*5);
+    uStressF(i,:,:) = slicerStress(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/L*16);
+    slicerDisc = uDiscF(p', xp(1,i), xp(2,i), gammax(i), gammay(i), 16*maxWaveNum,L);
+    discF(i,:,:) = slicerDisc(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/L*16);
     %discF{i} = slicerDisc(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/L*10);
     %discF{i}((2*end/3):end,:) = 1i*imag(discF{i}((2*end/3):end,:));
     
@@ -425,14 +425,14 @@ for i = 1:numPart
     end
     [uallp, ~, ic] = unique(allp,'rows');
     
-    slicerStressInf = regStressletF(uallp,xp(:,i),gammax(i),gammay(i),epsilon, 10*maxWaveNum,L);
+    slicerStressInf = regStressletF(uallp,xp(:,i),gammax(i),gammay(i),epsilon, 16*maxWaveNum,L);
     slicerStressInf = slicerStressInf([ic;ic+length(uallp);ic+2*length(uallp)],:);
-    uStressFinf{i} = reshape(slicerStressInf(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/L*10), E, numel(subtp{i}), 3, maxWaveNum);
+    uStressFinf{i} = reshape(slicerStressInf(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/L*16), E, numel(subtp{i}), 3, maxWaveNum);
     
     
-    slicerDiscInf = uDiscF(uallp, xp(1,i), xp(2,i), gammax(i), gammay(i), 10*maxWaveNum,L);
+    slicerDiscInf = uDiscF(uallp, xp(1,i), xp(2,i), gammax(i), gammay(i), 16*maxWaveNum,L);
     slicerDiscInf = slicerDiscInf([ic;ic+length(uallp);ic+2*length(uallp)],:);
-    discFinf{i} = reshape(slicerDiscInf(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/L*10), E, numel(subtp{i}), 3, maxWaveNum);
+    discFinf{i} = reshape(slicerDiscInf(:,1:maxWaveNum)/((2*pi)^0.5*maxWaveNum/L*16), E, numel(subtp{i}), 3, maxWaveNum);
 end
 toc
 %compute special int points
@@ -538,7 +538,6 @@ u = sparse(u);
 
 % Dirichlet boundary
 Dirichlet123 = [Dirichlet; Dirichlet+numberOfNodes.new;Dirichlet+2*numberOfNodes.new];
-
 parfor waveIndex = 2:maxWaveNum
     
     
@@ -546,8 +545,8 @@ parfor waveIndex = 2:maxWaveNum
     [FhatL, FhatU, FhatP, FhatQ] = lu(Fhat(waveNumbers(waveIndex)));
     schurCompi = 1*mean(mean(abs(Bs)))*eq(waveIndex,1)*ones(numberOfNodes.old)+Mp;
     [schurL, schurU] = lu(schurCompi);
-    tol = 10^(-4);
-    maxit = 30;
+    tol = 10^(-7);
+    maxit = 50;
     buttshit = zeros(6, 3, numPart); %you need to create this because of how matlab does slicing
     %buttshit2 = zeros(numberOfNodes.new, numPart); %you need to create this because of how matlab does slicing
     RHSbase = RHSop(waveNumbers(waveIndex));
@@ -578,7 +577,7 @@ parfor waveIndex = 2:maxWaveNum
             A = A + 100*mean(mean(abs(Bs)))*(u*u');
         end
         
-        Uhat = gmres(A, F(:, i), 15, tol,maxit, @(x) PCbackSolve(x,A(1:a1, (a1+1):end),FhatL,FhatU, FhatP, FhatQ, schurL, schurU, a1));
+        Uhat = gmres(A, F(:, i), 25, tol,maxit, @(x) PCbackSolve(x,A(1:a1, (a1+1):end),FhatL,FhatU, FhatP, FhatQ, schurL, schurU, a1));
         
         buttshit(:,1, i) = Uhat(particleNodes{i});
         buttshit(:,2, i) = Uhat(particleNodes{i} + numberOfNodes.new);
@@ -602,8 +601,11 @@ for i = 1:numPart
 end
 UhatNodes2 = UhatNodes2(1:6,:,:);
 UhatNodes1 = UhatNodes1(1:6,:,:);
-Unodes2 = sum(real(UhatNodes2), 2)/maxWaveNum;
-Unodes1 = sum(real(UhatNodes1), 2)/maxWaveNum;
+ Unodes2 = sum(real(UhatNodes2), 2)/maxWaveNum;
+ Unodes1 = sum(real(UhatNodes1), 2)/maxWaveNum;
+%Unodes2 = real(UhatNodes2)/maxWaveNum;
+%Unodes1 = real(UhatNodes1)/maxWaveNum;
+
 for i = 1:numPart
     nodes = particleNodes{i};
     xpi = xp(:,i);

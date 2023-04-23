@@ -2,7 +2,7 @@
 % fd=@(p) drectangle(p,0,4,0,1);
 % [p,t]=distmesh2d(fd,@huniform,0.02229,[0, 0;4, 1],[0  0; 0  1;  4  1;  4   0]);
 % initialLength epsilon number of modes
-paramSet = {[0.01   0.005  360]};
+paramSet = {[0.02  0.0115  360]};
 %paramSet = {[0.01   0.005  178]};
 %paramSet = {[0.005   0.002  1500] };
 xp = [2*ones(size(0.1:0.05:0.45)); 0.1:0.05:0.45];
@@ -34,18 +34,18 @@ end
  X = xlsread('hinchComsol');
  Y = xlsread('hinchData');
 
-% 
+
+figure
+hold on
+plot(xp(2,:), real(velocities(:,:,2)))
+plot(X(:,1),X(:,2))
+plot(Y(:,1),Y(:,2))
+
+
+% X = xlsread('hinchComsol_75');
+% Y = xlsread('hinchData_75');
 % figure
 % hold on
 % plot(xp(2,:), real(velocities(:,:,2)))
-% plot(X(:,1),X(:,2))
-% plot(Y(:,1),Y(:,2))
-
-
-X = xlsread('hinchComsol_75');
-Y = xlsread('hinchData_75');
-figure
-hold on
-plot(xp(2,:), real(velocities(:,:,2))/75)
-plot(X(:,1),X(:,6))
- plot(Y(:,1),Y(:,2))
+% plot(X(:,1),X(:,6))
+%  plot(Y(:,1),Y(:,2))

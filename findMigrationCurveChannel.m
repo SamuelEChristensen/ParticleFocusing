@@ -2,7 +2,7 @@ function [xp, v, eqPoints] = findMigrationCurveChannel(fd, bbox, pfix, Re, fhUse
 %% Calculation
 narginchk(3,7)
 
-paramSet = [0.04   0.00085  150];
+paramSet = [0.04   0.00085  140];
 %  smallest grid size epsilon  max wavenumber
 
 xlength = bbox(2)-bbox(1);
@@ -20,7 +20,9 @@ if nargin==2
 end
 
 if nargin>2
-    [p,t]=distmesh2d(fd,fhUser,0.02 ,bbox, pfix);
+     smallScale = min(fhUser(xpUser'));
+    disp(['smallScale = ',num2str(smallScale)])
+    [p,t]=distmesh2d(fd,fhUser,smallScale ,bbox, pfix);
     xp=xpUser(:,fd(xpUser')<-0.02); %Mess around here for boundary distance
     if nargin<5
         settings ={ };

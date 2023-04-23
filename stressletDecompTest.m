@@ -5,7 +5,7 @@
 %paramSet = {[0.01   0.01  512]  [0.0141   0.01  256]   [0.028   0.01  512]    [0.0141   0.01  512]};
 paramSet = {[0.01  0.025  160  4] };
 paramSet = {[0.1  0.05  300 5]   [0.05  0.025  300 5]   [0.025  0.0125  300 5]    [0.0125  0.00625  300 5]    [0.0075  0.0025  400 5]};
-paramSet = {[0.01   0.0025  400  4] };
+paramSet = {[0.02   0.02  200  4] };
 xp = [2*ones(size(0.1:0.05:0.45)); 0.1:0.05:0.45];
 %xp = [2;0.2];
 velocities = zeros(length(paramSet), size(xp,2),2);
@@ -29,18 +29,20 @@ L = parami(4);
 waveNumbers = -2*pi*(0:(maxWaveNum-1))/L;
 tic
 [bgFlow,~,~] = poissonSolver(p,t,f,fb);
+profile on
 [u,pold,told] = velocitySolveStressletDecomp(p,t, parami(2), waveNumbers, xp, bgFlow',L);
+profile viewer
 velocities(i,:,:) = (2*pi)^0.5*maxWaveNum/L*u*2;
 toc
 end
 
 
-X = xlsread('hinchComsol_75');
-Y = xlsread('hinchData_75');
+X = xlsread('hinchComsol');
+Y = xlsread('hinchData');
 figure
 hold on
-% plot(X(:,1),X(:,2));
-% plot(Y([1,2,4:9],1),Y([1,2,4:9],2));
- plot(X(:,1),X(:,6))
- plot(Y(:,1),Y(:,2))
-plot(xp(2,:), real(velocities(:,:,2))/75)
+ plot(X(:,1),X(:,2));
+ plot(Y([1,2,4:9],1),Y([1,2,4:9],2));
+% plot(X(:,1),X(:,6))
+% plot(Y(:,1),Y(:,2))
+plot(xp(2,:), real(velocities(:,:,2)))
